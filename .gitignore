@@ -1,0 +1,6 @@
+# Persönliche Dateien (Grundriss, eigene Konfiguration) nie committen
+private/
+*.private.*
+grundriss*
+floorplan*.png
+.DS_Store

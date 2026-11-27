@@ -1,0 +1,39 @@
+name: Release
+
+# Creates a GitHub release (vX.Y.Z) with the card file attached whenever the
+# version in dist/ipad-dashboard-card.js changes on the default branch.
+# HACS uses these releases to offer updates.
+
+on:
+  push:
+    paths:
+      - dist/ipad-dashboard-card.js
+      - CHANGELOG.md
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read version
+        id: v
+        run: |
+          V=$(grep -oP 'const CARD_VERSION = "\K[^"]+' dist/ipad-dashboard-card.js)
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+      - name: Create release if it does not exist yet
+        env:
+          GH_TOKEN: ${{ github.token }}
+          V: ${{ steps.v.outputs.version }}
+        run: |
+          if gh release view "v$V" >/dev/null 2>&1; then
+            echo "Release v$V exists already – bump CARD_VERSION for a new release."
+            exit 0
+          fi
+          awk -v v="## v$V" '$0 ~ "^## " {f = (index($0, v) == 1); next} f' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Release v$V" > notes.md
+          gh release create "v$V" dist/ipad-dashboard-card.js --title "v$V" --notes-file notes.md --target "$GITHUB_SHA"

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.0
+
+- Tabs oben: Übersicht, Wetter, Verkehr, Einkaufen, Zuhause. Die Uhrzeit rechts öffnet die Uhr. Kacheln in der Übersicht führen zum passenden Tab.
+- Uhr: Wecker (mit Wiederholung, Bezeichnung, Schlummern), Timer (Schnellwahl und eigene Minuten) und Stoppuhr mit Runden. Wecker werden im Home-Assistant-Benutzerprofil gespeichert. Optional startet `alarm_script` ein Skript beim Klingeln.
+- Wetter-Tab: 24-Stunden-Verlauf mit Temperaturkurve, bis zu 15 Tage, Detailkacheln (Gefühlt, Luftfeuchtigkeit, Wind mit Richtung, UV-Index, Luftdruck, Sichtweite, Bewölkung, Niederschlag, Sonnenauf- und -untergang).
+- Verkehr-Tab: große Tafel mit Plan- und Echtzeit, Verspätung, Gleis und Störungstext, Filter je Richtung, Richtungskarten mit den nächsten Fahrten, Anfahrt und Loslauf-Hinweis.
+- Einkaufen-Tab: Vorschläge beim Tippen, „Rückgängig“ nach dem Abhaken, Sortierung (Liste / A–Z), mehrere Bring!-Listen (`todo_entities`), Favoriten (`quick_items`), „Zuletzt gekauft“.
+- Zuhause-Tab: großer Grundriss und Geräteliste (`home_entities`, Räume aus `floorplan.rooms`).
+- Optional automatisch zurück zur Übersicht (`return_to_overview`).
+
 ## v1.1.0
 
 - Wetter im iOS-Stil: kompakter Kopf mit Ort, Temperatur sowie H/T, stündliche Vorhersage und Tagesliste mit Temperaturbalken, farbige Icons und Farbverlauf je nach Wetter und Tageszeit.

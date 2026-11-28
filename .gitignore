@@ -4,3 +4,4 @@ private/
 grundriss*
 floorplan*.png
 .DS_Store
+node_modules/

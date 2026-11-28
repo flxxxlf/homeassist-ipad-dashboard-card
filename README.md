@@ -9,9 +9,10 @@ Eine Lovelace-Karte für Home Assistant für ein **iPad Pro 10,5" im Querformat*
 | **Verkehr** | Abfahrtstafel (optional Berliner Zugzielanzeiger), Filter je Richtung, Anfahrt und Loslauf-Hinweis |
 | **Einkaufen** | Bring!-Liste: hinzufügen mit Vorschlägen, abhaken mit „Rückgängig“, Menge/Notiz bearbeiten, Favoriten, mehrere Listen |
 | **Zuhause** | Großer Grundriss mit Räumen und Geräten |
+| **Musik** | Alle Räume auf einen Blick, große Ansicht mit Steuerung, Spotify-Playlists über Music Assistant. Optional spielt das iPad selbst als Lautsprecher (Sendspin). |
 | **Uhr** | Wecker, Timer und Stoppuhr. Öffnet sich über die Uhrzeit oben rechts oder die Uhr-Kachel. |
 
-Keine Entity-IDs, Bilder oder persönlichen Daten im Code. Alles wird in der Kartenkonfiguration angegeben. Alle Daten kommen über das `hass`-Objekt, ein Token ist nicht nötig. Die Karte ist eine einzige JS-Datei ohne Abhängigkeiten.
+Keine Entity-IDs, IP-Adressen, Bilder oder persönlichen Daten im Code. Alles wird in der Kartenkonfiguration angegeben. Alle Home-Assistant-Daten kommen über das `hass`-Objekt, ein Token ist nicht nötig. Die Karte ist eine einzige JS-Datei. Die offizielle Sendspin-Bibliothek ist bereits eingebaut.
 
 ## Installation
 
@@ -57,8 +58,8 @@ Die Höhe ist standardmäßig `100vh` minus Kopfzeile. Wer die Kopfzeile ausblen
 
 | Option | Standard | Beschreibung |
 |---|---|---|
-| `tabs` | `[overview, weather, transit, shopping, home]` | Sichtbare Tabs und ihre Reihenfolge |
-| `default_tab` | `overview` | Tab beim Öffnen (auch `clock`) |
+| `tabs` | `[overview, weather, transit, shopping, home]` + `music`, sobald `music_rooms` oder `sendspin_server` gesetzt ist | Sichtbare Tabs und ihre Reihenfolge |
+| `default_tab` | `overview` | Tab beim Öffnen (auch `clock` oder `music`) |
 | `return_to_overview` | `0` | Nach so vielen Sekunden ohne Berührung zurück zum ersten Tab (0 = nie) |
 | `layout` | siehe unten | Kachel-Raster der Übersicht |
 
@@ -202,14 +203,79 @@ home_entities:                              # optional, zusätzliche Geräte in 
 
 **Datenschutz:** Der Grundriss gehört nicht ins öffentliche Repository. Er liegt nur in deinem Home Assistant unter `config/www/` (Adresse `/local/…`). Solche Dateien sind ohne Anmeldung abrufbar, wenn man die genaue URL kennt. Wähle deshalb einen nicht erratbaren Dateinamen.
 
+## Musik
+
+```yaml
+music_rooms:
+  - name: Küche
+    entity: media_player.kueche          # z. B. ein Music-Assistant-Player
+  - name: Wohnzimmer
+    entity: media_player.wohnzimmer_tv   # z. B. ein Apple TV
+sendspin_server: 192.168.178.10:8927     # optional: dieses iPad als Lautsprecher
+player_name: Küche
+```
+
+### Räume und Steuerung
+
+- **Oben:** alle Räume mit Cover, Titel, Künstler und App (z. B. Spotify, Attribut `app_name`). Ein Raum, der gerade nicht spielt, erscheint dezent als „Pausiert“, „Aus“ oder „Bereit“. Fehlt eine Entität, steht „Entität nicht gefunden“, und die Karte läuft normal weiter.
+- **Raum antippen:** öffnet die große Ansicht mit Cover, Titel, Künstler, Album und Fortschritt. Bei Playern mit Spulfunktion springt ein Tipp auf den Balken an diese Stelle.
+- **Knöpfe:** Play/Pause, Zurück, Weiter, Zufall, Wiederholen, Lautstärke (Regler oder −/+), Stumm und Ein/Aus. Es erscheinen nur Knöpfe, die der Player laut `supported_features` unterstützt.
+- **Playlists:** Nur bei **Music-Assistant-Playern** erscheint rechts die Liste deiner Playlists aus der Music-Assistant-Bibliothek, also deine Spotify-Playlists, wenn Spotify in Music Assistant eingebunden ist. Ein Tipp spielt die Playlist in diesem Raum ab. Die Karte nutzt dafür `music_assistant.get_library` und `music_assistant.play_media`. Bei anderen Playern (z. B. Apple TV) bleibt die Liste ausgeblendet.
+
+Ob ein Raum ein Music-Assistant-Player ist, erkennt die Karte an der Integration der Entität. Die nötige Config-Entry-ID von Music Assistant ermittelt sie ebenfalls selbst. Falls das nicht klappt, lässt sich beides pro Raum angeben:
+
+```yaml
+music_rooms:
+  - name: Küche
+    entity: media_player.kueche
+    music_assistant: true          # erzwingen (oder false zum Ausblenden der Playlists)
+    config_entry_id: 01ABC…        # optional, Einstellungen → Geräte & Dienste → Music Assistant
+```
+
+| Option | Standard | Beschreibung |
+|---|---|---|
+| `music_rooms` | – | Räume mit `name` und `entity` (Media Player) |
+| `playlist_limit` | `200` | Maximale Anzahl Playlists |
+| `playlist_favorites_only` | `false` | Nur als Favorit markierte Playlists |
+| `music_assistant_entry` | automatisch | Config-Entry-ID von Music Assistant für alle Räume |
+
+### Dieses iPad als Lautsprecher (Sendspin)
+
+Mit `sendspin_server` arbeitet das iPad selbst als **Music-Assistant-Player**, auch im Kiosk-Modus der Home-Assistant-App. Eingebaut ist die offizielle JavaScript-Bibliothek [`@sendspin/sendspin-js`](https://github.com/Sendspin/sendspin-js) des Sendspin-Projekts der Open Home Foundation.
+
+- Das iPad erscheint in Music Assistant unter `player_name` (z. B. „Küche“) und lässt sich dort wie jeder andere Player auswählen und gruppieren.
+- Der Player läuft, solange das Dashboard offen ist, egal welcher Tab gewählt ist.
+- Beim Start erscheint dezent **„Tippen, um Ton zu aktivieren“**. iPadOS erlaubt Ton erst nach einer Berührung. Nach dem ersten Tippen verschwindet der Hinweis.
+- Bricht die Verbindung ab, verbindet sich der Player automatisch neu. Den Status zeigt ein Lautsprecher-Symbol oben rechts (grün = verbunden) und eine Zeile im Musik-Tab.
+- Verlangt Music Assistant eine Kopplung, zeigt die Karte unten rechts einen Code, den du in Music Assistant eingibst.
+- Ohne `sendspin_server` ist der ganze Player-Teil deaktiviert.
+
+| Option | Standard | Beschreibung |
+|---|---|---|
+| `sendspin_server` | – | Adresse des Sendspin-Servers von Music Assistant: `IP:Port`. Ohne Port wird `8927` verwendet. Auch eine vollständige URL wie `ws://…/sendspin` oder `wss://…` ist möglich. |
+| `player_name` | `iPad` | Name des iPads in Music Assistant |
+| `sendspin_codecs` | `[pcm]` | Audioformate. PCM ist im Heimnetz am zuverlässigsten. |
+
+**Wichtig:**
+- **Aktuelle Music-Assistant-Version nötig.** Sendspin ist noch jung, und ältere Music-Assistant-Versionen mit einem früheren Protokollstand können sich nicht verbinden.
+- **HTTP statt HTTPS:** Öffnet die Home-Assistant-App das Dashboard über `https://` (z. B. Nabu Casa oder Reverse-Proxy), blockiert iOS unverschlüsselte `ws://`-Verbindungen ins Heimnetz. Das iPad sollte das Dashboard daher über die **lokale Adresse** öffnen (`http://<ip>:8123`, in der App unter „Interne URL“). Alternativ den Sendspin-Server per `wss://` erreichbar machen.
+- Bildschirm an lassen: Automatische Sperre auf „Nie“ stellen oder Geführten Zugriff nutzen. Bei gesperrtem Bildschirm pausiert iOS die Wiedergabe.
+
 ## Weitere Optionen
 
 `height` (CSS-Höhe), `background` (CSS-Farbe).
 
 ## Entwicklung und Releases
 
-Bei jeder Änderung `CARD_VERSION` in `dist/ipad-dashboard-card.js` erhöhen und einen Abschnitt in `CHANGELOG.md` ergänzen. Landet die Änderung auf dem Standard-Branch, legt die GitHub Action `Release` automatisch das Release `vX.Y.Z` an. HACS bietet es dann als Update an.
+Der Quellcode liegt in `src/ipad-dashboard-card.js`. `dist/ipad-dashboard-card.js` wird daraus gebaut, zusammen mit der Sendspin-Bibliothek:
+
+```bash
+npm ci
+npm run build
+```
+
+Bei jeder Änderung `CARD_VERSION` in `src/ipad-dashboard-card.js` erhöhen, neu bauen und einen Abschnitt in `CHANGELOG.md` ergänzen. Landet die Änderung auf dem Standard-Branch, legt die GitHub Action `Release` automatisch das Release `vX.Y.Z` an. HACS bietet es dann als Update an.
 
 ## Lizenz
 
-MIT
+MIT. Die gebaute Datei enthält [`@sendspin/sendspin-js`](https://github.com/Sendspin/sendspin-js) (Apache-2.0) sowie dessen Abhängigkeiten `@noble/curves`, `@noble/hashes` und `@noble/ciphers` (MIT).

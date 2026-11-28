@@ -1,592 +1,7 @@
-/*
- * iPad Dashboard Card
- * Custom Lovelace card for Home Assistant – a tabbed wall dashboard for an
- * iPad Pro 10.5" in landscape (1112 × 834 CSS px):
- *   Übersicht · Wetter · Verkehr · Einkaufen · Zuhause  (+ Uhr: Wecker, Timer, Stoppuhr)
- *
- * All data comes from the `hass` object / its websocket connection.
- * No entity IDs, images or personal data are part of this file – everything
- * is set in the card configuration.
- */
-
-const CARD_VERSION = "1.2.0";
-const CARD_TAG = "ipad-dashboard-card";
-const EDITOR_TAG = "ipad-dashboard-card-editor";
-const USER_DATA_KEY = "ipad_dashboard_card";
-
-/* ------------------------------------------------------------------ i18n */
-
-const STRINGS = {
-  de: {
-    tab_overview: "Übersicht",
-    tab_weather: "Wetter",
-    tab_transit: "Verkehr",
-    tab_shopping: "Einkaufen",
-    tab_home: "Zuhause",
-    tab_clock: "Uhr",
-    weather: "Wetter",
-    shopping: "Einkaufsliste",
-    departures: "Abfahrten",
-    floorplan: "Zuhause",
-    floorplan_hint: "Grundriss-Bild unter floorplan → image angeben, z. B. /local/grundriss.png",
-    add_placeholder: "Artikel hinzufügen …",
-    add: "Hinzufügen",
-    empty_list: "Alles erledigt – die Liste ist leer.",
-    recent: "Zuletzt gekauft",
-    no_departures: "Keine Abfahrten verfügbar.",
-    not_found: "Entität nicht gefunden",
-    not_configured: "Nicht konfiguriert",
-    now: "jetzt",
-    now_hour: "Jetzt",
-    min: "min",
-    today: "Heute",
-    tomorrow: "Morgen",
-    high: "H",
-    low: "T",
-    hourly: "Stündliche Vorhersage",
-    hours24: "Nächste 24 Stunden",
-    daily: (n) => `${n}-Tage-Vorhersage`,
-    cancelled: "fällt aus",
-    on_time: "pünktlich",
-    platform: "Gl.",
-    items: (n) => (n === 1 ? "1 Artikel" : `${n} Artikel`),
-    more: (n) => `+ ${n} weitere`,
-    unavailable: "nicht verfügbar",
-    edit_item: "Artikel bearbeiten",
-    item_name: "Artikel",
-    item_spec: "Menge / Notiz",
-    item_spec_placeholder: "z. B. 2 Liter, Bio …",
-    save: "Speichern",
-    delete: "Löschen",
-    done: "Erledigt",
-    cancel: "Abbrechen",
-    undo: "Rückgängig",
-    completed_toast: (n) => `„${n}“ erledigt`,
-    added_toast: (n) => `„${n}“ hinzugefügt`,
-    approach: "Anfahrt",
-    leave_in: (m) => `Loslaufen in ${m} min`,
-    leave_now: "Jetzt loslaufen",
-    too_late: "Nicht mehr erreichbar",
-    realtime: "Echtzeit",
-    line: "Linie",
-    destination: "Ziel",
-    departure: "Abfahrt",
-    all: "Alle",
-    planned: "Plan",
-    disruption: "Störung",
-    updated: (t) => `Stand ${t}`,
-    next_trains: "Nächste Fahrten",
-    feels_like: "Gefühlt",
-    humidity: "Luftfeuchtigkeit",
-    dew_point: (v) => `Taupunkt ${v}`,
-    wind: "Wind",
-    gusts: (v) => `Böen ${v}`,
-    pressure: "Luftdruck",
-    visibility: "Sichtweite",
-    uv: "UV-Index",
-    uv_levels: ["Niedrig", "Mäßig", "Hoch", "Sehr hoch", "Extrem"],
-    clouds: "Bewölkung",
-    sun: "Sonne",
-    sunrise: "Aufgang",
-    sunset: "Untergang",
-    precipitation: "Niederschlag",
-    today_total: "heute",
-    compass: ["N", "NO", "O", "SO", "S", "SW", "W", "NW"],
-    sort_az: "A–Z",
-    sort_list: "Liste",
-    shop_hint: "Antippen = erledigt · Lange drücken oder ✎ = bearbeiten",
-    suggestions: "Vorschläge",
-    favorites: "Favoriten",
-    quick_add: "Schnell hinzufügen",
-    lights_on: (n) => (n === 1 ? "1 an" : `${n} an`),
-    devices: "Geräte",
-    no_devices: "Noch keine Geräte eingerichtet. Lichter später unter floorplan → rooms oder home_entities eintragen.",
-    alarms: "Wecker",
-    timers: "Timer",
-    stopwatch: "Stoppuhr",
-    add_alarm: "Wecker hinzufügen",
-    edit_alarm: "Wecker",
-    no_alarms: "Keine Wecker gestellt.",
-    alarm_label: "Bezeichnung",
-    alarm_label_placeholder: "z. B. Aufstehen",
-    time: "Uhrzeit",
-    repeat: "Wiederholen",
-    once: "Einmalig",
-    daily_rep: "Täglich",
-    weekdays: "Werktags",
-    weekend: "Wochenende",
-    days_short: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"],
-    next_alarm: "Nächster Wecker",
-    in_time: (h, m) => (h ? `in ${h} Std. ${m} Min.` : `in ${m} Min.`),
-    snooze: (m) => `Schlummern (${m} min)`,
-    stop: "Stopp",
-    start: "Start",
-    lap: "Runde",
-    reset: "Zurücksetzen",
-    resume: "Weiter",
-    timer_done: "Timer abgelaufen",
-    alarm_ringing: "Wecker",
-    custom_min: "Minuten",
-    no_timers: "Kein Timer aktiv.",
-    alarm_note: "Klingelt, solange dieses Dashboard geöffnet und der Bildschirm an ist.",
-  },
-  en: {
-    tab_overview: "Overview",
-    tab_weather: "Weather",
-    tab_transit: "Transit",
-    tab_shopping: "Shopping",
-    tab_home: "Home",
-    tab_clock: "Clock",
-    weather: "Weather",
-    shopping: "Shopping list",
-    departures: "Departures",
-    floorplan: "Home",
-    floorplan_hint: "Set a floor plan image under floorplan → image, e.g. /local/floorplan.png",
-    add_placeholder: "Add item …",
-    add: "Add",
-    empty_list: "All done – the list is empty.",
-    recent: "Recently bought",
-    no_departures: "No departures available.",
-    not_found: "Entity not found",
-    not_configured: "Not configured",
-    now: "now",
-    now_hour: "Now",
-    min: "min",
-    today: "Today",
-    tomorrow: "Tomorrow",
-    high: "H",
-    low: "L",
-    hourly: "Hourly forecast",
-    hours24: "Next 24 hours",
-    daily: (n) => `${n}-day forecast`,
-    cancelled: "cancelled",
-    on_time: "on time",
-    platform: "Pl.",
-    items: (n) => (n === 1 ? "1 item" : `${n} items`),
-    more: (n) => `+ ${n} more`,
-    unavailable: "unavailable",
-    edit_item: "Edit item",
-    item_name: "Item",
-    item_spec: "Amount / note",
-    item_spec_placeholder: "e.g. 2 litres, organic …",
-    save: "Save",
-    delete: "Delete",
-    done: "Done",
-    cancel: "Cancel",
-    undo: "Undo",
-    completed_toast: (n) => `“${n}” done`,
-    added_toast: (n) => `“${n}” added`,
-    approach: "Approaching",
-    leave_in: (m) => `Leave in ${m} min`,
-    leave_now: "Leave now",
-    too_late: "Not reachable anymore",
-    realtime: "Real time",
-    line: "Line",
-    destination: "Destination",
-    departure: "Departs",
-    all: "All",
-    planned: "Sched.",
-    disruption: "Disruption",
-    updated: (t) => `Updated ${t}`,
-    next_trains: "Next trips",
-    feels_like: "Feels like",
-    humidity: "Humidity",
-    dew_point: (v) => `Dew point ${v}`,
-    wind: "Wind",
-    gusts: (v) => `Gusts ${v}`,
-    pressure: "Pressure",
-    visibility: "Visibility",
-    uv: "UV index",
-    uv_levels: ["Low", "Moderate", "High", "Very high", "Extreme"],
-    clouds: "Cloud cover",
-    sun: "Sun",
-    sunrise: "Sunrise",
-    sunset: "Sunset",
-    precipitation: "Precipitation",
-    today_total: "today",
-    compass: ["N", "NE", "E", "SE", "S", "SW", "W", "NW"],
-    sort_az: "A–Z",
-    sort_list: "List",
-    shop_hint: "Tap = done · Long press or ✎ = edit",
-    suggestions: "Suggestions",
-    favorites: "Favourites",
-    quick_add: "Quick add",
-    lights_on: (n) => `${n} on`,
-    devices: "Devices",
-    no_devices: "No devices yet. Add lights later under floorplan → rooms or home_entities.",
-    alarms: "Alarms",
-    timers: "Timers",
-    stopwatch: "Stopwatch",
-    add_alarm: "Add alarm",
-    edit_alarm: "Alarm",
-    no_alarms: "No alarms set.",
-    alarm_label: "Label",
-    alarm_label_placeholder: "e.g. Wake up",
-    time: "Time",
-    repeat: "Repeat",
-    once: "Once",
-    daily_rep: "Every day",
-    weekdays: "Weekdays",
-    weekend: "Weekends",
-    days_short: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"],
-    next_alarm: "Next alarm",
-    in_time: (h, m) => (h ? `in ${h} h ${m} min` : `in ${m} min`),
-    snooze: (m) => `Snooze (${m} min)`,
-    stop: "Stop",
-    start: "Start",
-    lap: "Lap",
-    reset: "Reset",
-    resume: "Resume",
-    timer_done: "Timer finished",
-    alarm_ringing: "Alarm",
-    custom_min: "Minutes",
-    no_timers: "No timer running.",
-    alarm_note: "Rings while this dashboard is open and the screen is on.",
-  },
-};
-
-const TABS = [
-  { id: "overview", icon: "mdi:view-dashboard-outline" },
-  { id: "weather", icon: "mdi:weather-partly-cloudy" },
-  { id: "transit", icon: "mdi:subway-variant" },
-  { id: "shopping", icon: "mdi:cart-outline" },
-  { id: "home", icon: "mdi:home-outline" },
-];
-
-const CONDITIONS = {
-  de: {
-    "clear-night": "Klar",
-    cloudy: "Bewölkt",
-    exceptional: "Unwetter",
-    fog: "Nebel",
-    hail: "Hagel",
-    lightning: "Gewitter",
-    "lightning-rainy": "Gewitter mit Regen",
-    partlycloudy: "Teilweise bewölkt",
-    pouring: "Starkregen",
-    rainy: "Regen",
-    snowy: "Schnee",
-    "snowy-rainy": "Schneeregen",
-    sunny: "Sonnig",
-    windy: "Windig",
-    "windy-variant": "Windig und bewölkt",
-  },
-  en: {
-    "clear-night": "Clear",
-    cloudy: "Cloudy",
-    exceptional: "Exceptional",
-    fog: "Fog",
-    hail: "Hail",
-    lightning: "Lightning",
-    "lightning-rainy": "Thunderstorms",
-    partlycloudy: "Partly cloudy",
-    pouring: "Heavy rain",
-    rainy: "Rain",
-    snowy: "Snow",
-    "snowy-rainy": "Sleet",
-    sunny: "Sunny",
-    windy: "Windy",
-    "windy-variant": "Windy, cloudy",
-  },
-};
-
-/* Line colours of the Berlin U-Bahn / S-Bahn network (public line colours),
- * plus generic colours per transport type. Override with `line_colors`. */
-const BERLIN_COLORS = {
-  U1: "#7DAD4C", U2: "#DA421E", U3: "#16683D", U4: "#F0D722", U5: "#7E5330",
-  U6: "#8C6DAB", U7: "#528DBA", U8: "#224F86", U9: "#F3791D",
-  S1: "#DE4DA4", S2: "#005F27", S25: "#005F27", S26: "#005F27", S3: "#0A4C99",
-  S41: "#AD5937", S42: "#CB6418", S45: "#CD9C53", S46: "#CD9C53", S47: "#CD9C53",
-  S5: "#EB7405", S7: "#816DA6", S75: "#816DA6", S8: "#66AA22", S85: "#66AA22", S9: "#992746",
-};
-const TRANSPORT_COLORS = { BUS: "#95276E", TRAM: "#BE1414", SUBWAY: "#115D91", METRO: "#115D91", SUBURBAN: "#007734", FERRY: "#528DBA" };
-
-/* Candidate keys used to read departure data from very different integrations
- * (ha-departures, MVG, HAFAS, DB, RMV, VBB, …). Override with `departure_fields`. */
-const DEPARTURE_LIST_KEYS = ["times", "departures", "next_departures", "connections", "journeys", "trips", "data"];
-const FIELD_CANDIDATES = {
-  line: ["line", "line_name", "label", "lineName", "name", "number", "transport_line", "route", "servingLine"],
-  destination: ["destination", "head_sign", "headsign", "direction", "to", "final_stop", "dest", "end_station"],
-  time: [
-    "estimated",
-    "realtime_departure",
-    "realtimeDepartureTime",
-    "departure_realtime",
-    "expected",
-    "when",
-    "departure",
-    "departure_time",
-    "time",
-    "planned",
-    "plannedDepartureTime",
-    "scheduled",
-    "plannedWhen",
-  ],
-  planned: ["planned", "plannedDepartureTime", "scheduled", "plannedWhen", "departure_time_planned"],
-  minutes: ["minutes", "departure_in", "in", "time_to_departure", "countdown", "min", "in_min"],
-  delay: ["delay", "delay_minutes", "delayInMinutes", "delay_departure"],
-  platform: ["track", "platform", "scheduled_track", "gleis", "stop_point"],
-  cancelled: ["cancelled", "canceled", "is_cancelled", "cancel"],
-  color: ["color", "line_color", "background_color", "lineBackgroundColor"],
-  transport: ["transport", "transport_type", "product", "mode", "type"],
-  alerts: ["alerts", "alert", "info", "messages"],
-};
-
-
-const LINE_PALETTE = ["#5b8bb5", "#6f9e8a", "#b0865b", "#8a7bb0", "#b56b6b", "#5f9ea8", "#a39a5b", "#7f8fa8"];
-
-/* Overview tile layout (areas: clock, weather, dep, todo, plan) */
-const DEFAULT_LAYOUT = {
-  areas: ["clock weather dep", "plan todo dep"],
-  columns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.05fr)",
-  rows: "minmax(0, 0.82fr) minmax(0, 1fr)",
-};
-
-const DEFAULTS = {
-  tabs: ["overview", "weather", "transit", "shopping", "home"],
-  default_tab: "overview",
-  return_to_overview: 0,
-  max_departures: 7,
-  max_departures_detail: 14,
-  hide_below_minutes: 0,
-  walk_minutes: 0,
-  add_delay: false,
-  group_departures: false,
-  departure_style: "calm",
-  show_approach: true,
-  approach_window: 15,
-  forecast_hours: 5,
-  forecast_days: 10,
-  weather_gradient: true,
-  show_completed: 30,
-  spec_separator: ":",
-  spec_suggestions: ["2×", "3×", "500 g", "1 kg", "Bio", "groß"],
-  show_seconds: false,
-  snooze_minutes: 9,
-  alarm_ring_minutes: 5,
-  timer_presets: [1, 3, 5, 10, 15, 30],
-  height: "calc(100vh - var(--header-height, 56px) - 16px)",
-};
-
-/* --------------------------------------------------------------- helpers */
-
-const esc = (v) =>
-  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-
-const getPath = (obj, path) => {
-  if (obj == null || path == null) return undefined;
-  return String(path)
-    .split(".")
-    .reduce((o, k) => (o == null ? undefined : o[k]), obj);
-};
-
-const firstDefined = (obj, keys) => {
-  for (const k of keys) {
-    const v = getPath(obj, k);
-    if (v !== undefined && v !== null && v !== "") return v;
-  }
-  return undefined;
-};
-
-const hashString = (s) => {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
-};
-
-/** Parses delay values like 3, "3", "+3", "0:03:00", "PT3M" into minutes. */
-const parseDelay = (v) => {
-  if (v == null || v === "") return null;
-  if (typeof v === "number") return v;
-  const s = String(v).trim();
-  if (/^[+-]?\d+(\.\d+)?$/.test(s)) return parseFloat(s);
-  const hms = s.match(/^(-)?(\d+):(\d{2})(?::(\d{2}))?$/);
-  if (hms) {
-    const m = +hms[2] * 60 + +hms[3] + (hms[4] ? +hms[4] / 60 : 0);
-    return hms[1] ? -m : m;
-  }
-  const iso = s.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
-  if (iso) return (+iso[1] || 0) * 60 + (+iso[2] || 0) + (+iso[3] || 0) / 60;
-  return null;
-};
-
-/** Converts timestamps, ISO strings, "HH:MM" or minute counts to epoch ms. */
-const parseTime = (v, now) => {
-  if (v == null || v === "") return null;
-  if (typeof v === "number") {
-    if (v > 1e12) return v;
-    if (v > 1e9) return v * 1000;
-    return now + v * 60000;
-  }
-  const s = String(v).trim();
-  if (/^-?\d+(\.\d+)?$/.test(s)) return parseTime(parseFloat(s), now);
-  const hm = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
-  if (hm) {
-    const d = new Date(now);
-    d.setHours(+hm[1], +hm[2], +(hm[3] || 0), 0);
-    let ts = d.getTime();
-    if (ts < now - 6 * 3600000) ts += 86400000; // after midnight
-    return ts;
-  }
-  const t = Date.parse(s);
-  return Number.isNaN(t) ? null : t;
-};
-
-const hexToRgb = (hex) => {
-  const m = String(hex).trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
-  if (!m) return null;
-  let h = m[1];
-  if (h.length === 3) h = h.replace(/./g, (c) => c + c);
-  return [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
-};
-
-/** Dark text on bright badges (e.g. yellow U4), white text otherwise. */
-const badgeTextColor = (bg) => {
-  const rgb = hexToRgb(bg);
-  if (!rgb) return "#fff";
-  const [r, g, b] = rgb.map((c) => {
-    c /= 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? "#1a1a1a" : "#fff";
-};
-
-/** iOS-like temperature colour scale. */
-const TEMP_STOPS = [
-  [-10, [94, 140, 255]],
-  [0, [90, 200, 250]],
-  [10, [120, 210, 160]],
-  [18, [247, 209, 84]],
-  [25, [245, 158, 66]],
-  [32, [242, 97, 75]],
-];
-const tempColor = (t) => {
-  if (t <= TEMP_STOPS[0][0]) return `rgb(${TEMP_STOPS[0][1]})`;
-  for (let i = 1; i < TEMP_STOPS.length; i++) {
-    const [t1, c1] = TEMP_STOPS[i];
-    const [t0, c0] = TEMP_STOPS[i - 1];
-    if (t <= t1) {
-      const f = (t - t0) / (t1 - t0);
-      return `rgb(${c0.map((c, k) => Math.round(c + (c1[k] - c) * f))})`;
-    }
-  }
-  return `rgb(${TEMP_STOPS[TEMP_STOPS.length - 1][1]})`;
-};
-
-/* ---------------------------------------------------- weather icons (SVG) */
-
-const C_SUN = "#FFC93C";
-const C_CLOUD = "#EEF2F6";
-const C_CLOUD_DARK = "#AEB7C2";
-const C_RAIN = "#58B4F5";
-const C_MOON = "#E4E9F2";
-
-const svgCloud = (dx = 0, dy = 0, s = 1, fill = C_CLOUD) =>
-  `<g transform="translate(${dx} ${dy}) translate(32 40) scale(${s}) translate(-32 -40)" fill="${fill}">
+var Br=Object.defineProperty;var zr=(i,t,e)=>t in i?Br(i,t,{enumerable:!0,configurable:!0,writable:!0,value:e}):i[t]=e;var w=(i,t,e)=>zr(i,typeof t!="symbol"?t+"":t,e);var le=class{constructor(t,e){this.webCodecsDecoder=null,this.webCodecsDecoderReady=null,this.webCodecsFormat=null,this.useNativeOpus=!0,this.nativeDecoderQueue=[],this.opusDecoder=null,this.opusDecoderModule=null,this.opusDecoderReady=null,this.flacDecodingContext=null,this.flacDecodingContextSampleRate=0,this.flacDecodingContextChannels=0,this.onDecodedChunk=t,this.currentGeneration=e}async handleBinaryMessage(t,e,A){if(new Uint8Array(t)[0]===4){let n=new DataView(t,1,8),r=Number(n.getBigInt64(0,!1)),o=t.slice(13);if(e.codec==="opus"&&this.useNativeOpus&&(await this.initWebCodecsDecoder(e),this.useNativeOpus&&this.webCodecsDecoder&&this.queueToNativeOpusDecoder(o,r,A)))return;try{let a=await this.decode(o,e);a&&A===this.currentGeneration()&&this.onDecodedChunk({samples:a.samples,sampleRate:a.sampleRate,serverTimeUs:r,generation:A})}catch(a){console.error("Sendspin: Failed to decode audio buffer:",a)}}}async decode(t,e){return e.codec==="opus"?this.decodeOpusWithEncdec(t,e):e.codec==="flac"?this.decodeFLAC(t,e):e.codec==="pcm"?this.decodePCM(t,e):null}decodePCM(t,e){let A=e.bit_depth;if(A!==16&&A!==24&&A!==32)return console.warn(`Sendspin: unsupported PCM bit_depth ${A}`),null;let s=A/8,n=new DataView(t),r=t.byteLength/(s*e.channels),o=[];for(let a=0;a<e.channels;a++)o.push(new Float32Array(r));for(let a=0;a<e.channels;a++){let c=o[a];for(let l=0;l<r;l++){let h=(l*e.channels+a)*s,d=0;if(A===16)d=n.getInt16(h,!0)/32768;else if(A===24){let u=n.getUint8(h),p=n.getUint8(h+1),m=n.getUint8(h+2)<<16|p<<8|u;m&8388608&&(m|=4278190080),d=m/8388608}else A===32&&(d=n.getInt32(h,!0)/2147483648);c[l]=d}}return{samples:o,sampleRate:e.sample_rate}}getFlacDecodingContext(t,e){return(!this.flacDecodingContext||this.flacDecodingContextSampleRate!==t||this.flacDecodingContextChannels!==e)&&(this.flacDecodingContext=new OfflineAudioContext(e,1,t),this.flacDecodingContextSampleRate=t,this.flacDecodingContextChannels=e),this.flacDecodingContext}async decodeFLAC(t,e){try{let A=t;if(e.codec_header){let o=Uint8Array.from(atob(e.codec_header),c=>c.charCodeAt(0)),a=new Uint8Array(o.length+t.byteLength);a.set(o,0),a.set(new Uint8Array(t),o.length),A=a.buffer}let n=await this.getFlacDecodingContext(e.sample_rate,e.channels).decodeAudioData(A),r=[];for(let o=0;o<n.numberOfChannels;o++)r.push(new Float32Array(n.getChannelData(o)));return{samples:r,sampleRate:n.sampleRate}}catch(A){return console.error("Error decoding FLAC data:",A),null}}async initWebCodecsDecoder(t){let e=()=>{if(!this.webCodecsDecoder)return!1;let A=!!this.webCodecsFormat&&this.webCodecsFormat.sample_rate===t.sample_rate&&this.webCodecsFormat.channels===t.channels;if(this.webCodecsDecoder.state==="configured"&&A)return!0;if(this.webCodecsDecoder.state==="closed")return!1;try{return this.webCodecsDecoder.configure({codec:"opus",sampleRate:t.sample_rate,numberOfChannels:t.channels}),this.webCodecsFormat=t,!0}catch{return!1}};if(!e()){if(this.webCodecsDecoderReady){if(await this.webCodecsDecoderReady,e())return;try{this.webCodecsDecoder?.close()}catch{}this.webCodecsDecoder=null,this.webCodecsDecoderReady=null,this.webCodecsFormat=null}if(this.webCodecsDecoderReady){await this.webCodecsDecoderReady;return}this.webCodecsDecoderReady=this.createWebCodecsDecoder(t),await this.webCodecsDecoderReady}}async createWebCodecsDecoder(t){if(typeof AudioDecoder>"u"){this.useNativeOpus=!1;return}try{if(!(await AudioDecoder.isConfigSupported({codec:"opus",sampleRate:t.sample_rate,numberOfChannels:t.channels})).supported){console.log("[NativeOpus] WebCodecs Opus not supported, will use fallback"),this.useNativeOpus=!1;return}this.webCodecsDecoder=new AudioDecoder({output:A=>this.handleAudioData(A),error:A=>{console.error("[NativeOpus] WebCodecs decoder error:",A)}}),this.webCodecsDecoder.configure({codec:"opus",sampleRate:t.sample_rate,numberOfChannels:t.channels}),this.webCodecsFormat=t,console.log(`[NativeOpus] Using WebCodecs AudioDecoder: ${t.sample_rate}Hz, ${t.channels}ch`)}catch(e){console.warn("[NativeOpus] WebCodecs init failed, will use fallback:",e),this.useNativeOpus=!1}}handleAudioData(t){try{let e=Number(t.timestamp),A=this.nativeDecoderQueue.shift();if(!A){console.warn(`[NativeOpus] Dropping frame with empty decode queue (out ts=${e})`),t.close();return}let{serverTimeUs:s,generation:n}=A,r=this.webCodecsFormat;if(!r){t.close();return}if(n!==this.currentGeneration()){console.warn(`[NativeOpus] Dropping old-stream frame (ts=${s}, gen=${n} != current=${this.currentGeneration()})`),t.close();return}let o=t.numberOfChannels,a=t.numberOfFrames,c=t.format,l=[];for(let h=0;h<o;h++)l.push(new Float32Array(a));if(c==="f32-planar")for(let h=0;h<o;h++)t.copyTo(l[h],{planeIndex:h});else if(c==="s16-planar"){let h=new Int16Array(a);for(let d=0;d<o;d++){t.copyTo(h,{planeIndex:d});let u=l[d];for(let p=0;p<a;p++)u[p]=h[p]/32768}}else if(c==="f32"){let h=new Float32Array(a*o);t.copyTo(h,{planeIndex:0});for(let d=0;d<o;d++){let u=l[d];for(let p=0;p<a;p++)u[p]=h[p*o+d]}}else if(c==="s16"){let h=new Int16Array(a*o);t.copyTo(h,{planeIndex:0});for(let d=0;d<o;d++){let u=l[d];for(let p=0;p<a;p++)u[p]=h[p*o+d]/32768}}else{console.warn(`[NativeOpus] Unsupported AudioData format: ${c}`),t.close();return}t.close(),this.onDecodedChunk({samples:l,sampleRate:r.sample_rate,serverTimeUs:s,generation:n})}catch(e){console.error("[NativeOpus] Error in output callback:",e),t.close()}}queueToNativeOpusDecoder(t,e,A){if(!this.webCodecsDecoder||this.webCodecsDecoder.state!=="configured")return!1;try{this.nativeDecoderQueue.push({serverTimeUs:e,generation:A});let s=new EncodedAudioChunk({type:"key",timestamp:e,data:t});return this.webCodecsDecoder.decode(s),!0}catch(s){return this.nativeDecoderQueue.length>0&&this.nativeDecoderQueue.pop(),console.error("[NativeOpus] WebCodecs queue error:",s),!1}}resolveOpusDecoderModule(t){let e=t?.default,A=t?.["module.exports"],s=e??A??t;if(!s||typeof s!="object")throw new Error("[Opus] Invalid libopus decoder module export");return s}resolveOggOpusDecoderClass(t){let e=t?.default,A=t?.["module.exports"],s=e??A??t,n=s?.OggOpusDecoder??s;if(typeof n!="function")throw new Error("[Opus] OggOpusDecoder class export not found");return n}async waitForOpusReady(t){if(!t.isReady){if(Object.isExtensible(t)){await new Promise(e=>{t.onready=()=>e()});return}for(;!t.isReady;)await new Promise(e=>setTimeout(e,20))}}async initOpusEncdecDecoder(t){if(this.opusDecoderReady){await this.opusDecoderReady;return}this.opusDecoderReady=(async()=>{console.log("[Opus] Initializing decoder (opus-encdec)...");let[e,A]=await Promise.all([import("opus-encdec/dist/libopus-decoder.js"),import("opus-encdec/src/oggOpusDecoder.js")]);this.opusDecoderModule=this.resolveOpusDecoderModule(e);let s=this.resolveOggOpusDecoderClass(A);await this.waitForOpusReady(this.opusDecoderModule),this.opusDecoder=new s({rawOpus:!0,decoderSampleRate:t.sample_rate,outputBufferSampleRate:t.sample_rate,numberOfChannels:t.channels},this.opusDecoderModule),await this.waitForOpusReady(this.opusDecoder),console.log("[Opus] Decoder ready")})(),await this.opusDecoderReady}async decodeOpusWithEncdec(t,e){try{await this.initOpusEncdecDecoder(e);let A=new Uint8Array(t),s=[];if(this.opusDecoder.decodeRaw(A,a=>{s.push(new Float32Array(a))}),s.length===0)return console.warn("[Opus] Fallback decoder produced no samples"),null;let n=s[0],r=n.length/e.channels,o=[];for(let a=0;a<e.channels;a++){let c=new Float32Array(r);for(let l=0;l<r;l++)c[l]=n[l*e.channels+a];o.push(c)}return{samples:o,sampleRate:e.sample_rate}}catch(A){return console.error("[Opus] Decode error:",A),null}}clearState(){this.nativeDecoderQueue=[];try{this.webCodecsDecoder?.close()}catch{}this.webCodecsDecoder=null,this.webCodecsDecoderReady=null,this.webCodecsFormat=null}close(){this.clearState(),this.opusDecoder&&(this.opusDecoder=null,this.opusDecoderModule=null,this.opusDecoderReady=null),this.useNativeOpus=!0,this.flacDecodingContext=null,this.flacDecodingContextSampleRate=0,this.flacDecodingContextChannels=0}};function de(i){return Math.max(0,Math.min(100,Math.round(i)))}function si(i,t){let e={...i};for(let A of Object.keys(t)){let s=t[A];if(s===null)delete e[A];else if(s!==void 0){let n=e[A];typeof s=="object"&&!Array.isArray(s)&&typeof n=="object"&&n!==null&&!Array.isArray(n)?e[A]=si(n,s):e[A]=s}}return e}var Je=class{constructor(t,e){this.volumeStore=e,this._volume=100,this._muted=!1,this._playerState="synchronized",this._isPlaying=!1,this._currentStreamFormat=null,this._streamStartServerTime=0,this._streamStartAudioTime=0,this._streamGeneration=0,this._serverState={},this.pendingMetadataTimer=null,this.heldMetadata=[],this._groupState={},this.timeSyncInterval=null,this.stateUpdateInterval=null,this.onStateChangeCallback=t;let A=e?.load();A?.volume!=null&&(this._volume=de(A.volume)),A?.muted!=null&&(this._muted=A.muted)}get volume(){return this._volume}set volume(t){this._volume=de(t),this.volumeStore?.saveVolume(this._volume),this.notifyStateChange()}get muted(){return this._muted}set muted(t){this._muted=t,this.volumeStore?.saveMuted(t),this.notifyStateChange()}get playerState(){return this._playerState}set playerState(t){this._playerState=t,this.notifyStateChange()}get isPlaying(){return this._isPlaying}set isPlaying(t){this._isPlaying=t,this.notifyStateChange()}get currentStreamFormat(){return this._currentStreamFormat}set currentStreamFormat(t){this._currentStreamFormat=t}get streamStartServerTime(){return this._streamStartServerTime}set streamStartServerTime(t){this._streamStartServerTime=t}get streamStartAudioTime(){return this._streamStartAudioTime}set streamStartAudioTime(t){this._streamStartAudioTime=t}resetStreamAnchors(){this._streamStartServerTime=0,this._streamStartAudioTime=0,this._streamGeneration++}get streamGeneration(){return this._streamGeneration}setTimeSyncInterval(t){this.clearTimeSyncInterval(),this.timeSyncInterval=t}clearTimeSyncInterval(){this.timeSyncInterval!==null&&(clearTimeout(this.timeSyncInterval),this.timeSyncInterval=null)}setStateUpdateInterval(t){this.clearStateUpdateInterval(),this.stateUpdateInterval=t}clearStateUpdateInterval(){this.stateUpdateInterval!==null&&(clearInterval(this.stateUpdateInterval),this.stateUpdateInterval=null)}clearAllIntervals(){this.clearTimeSyncInterval(),this.clearStateUpdateInterval()}reset(){this._playerState="synchronized",this._isPlaying=!1,this._currentStreamFormat=null,this._streamStartServerTime=0,this._streamStartAudioTime=0,this.clearPendingMetadata(),this._serverState={},this._groupState={},this.clearAllIntervals()}notifyStateChange(){this.onStateChangeCallback&&this.onStateChangeCallback({isPlaying:this._isPlaying,volume:this._volume,muted:this._muted,playerState:this._playerState,serverState:this._serverState,groupState:this._groupState})}updateServerState(t,e=0){let A=t;if(t.metadata!==void 0){let{metadata:s,...n}=t;e===null?(this.heldMetadata.push(s),A=n):(this.clearPendingMetadata(),e>0&&(this.schedulePendingMetadata(s,e),A=n))}Object.keys(A).length!==0&&(this._serverState={...this._serverState,...A},this.notifyStateChange())}applyHeldMetadata(t){let e,A;for(let s of this.heldMetadata){let n=t(s.timestamp);n>0?A={metadata:s,delayMs:n}:(e=s,A=void 0)}this.heldMetadata=[],A&&this.schedulePendingMetadata(A.metadata,A.delayMs),e&&(this._serverState={...this._serverState,metadata:e},this.notifyStateChange())}schedulePendingMetadata(t,e){this.pendingMetadataTimer=setTimeout(()=>{this.pendingMetadataTimer=null,this._serverState={...this._serverState,metadata:t},this.notifyStateChange()},e)}discardRoleState(t){t.includes("metadata")&&this.clearPendingMetadata(),t.some(e=>e in this._serverState)&&(this._serverState=Object.fromEntries(Object.entries(this._serverState).filter(([e])=>!t.includes(e))),this.notifyStateChange())}clearConnectionState(){this.clearPendingMetadata(),!(Object.keys(this._serverState).length===0&&Object.keys(this._groupState).length===0)&&(this._serverState={},this._groupState={},this.notifyStateChange())}clearPendingMetadata(){this.heldMetadata=[],this.pendingMetadataTimer!==null&&(clearTimeout(this.pendingMetadataTimer),this.pendingMetadataTimer=null)}updateGroupState(t){this._groupState=si(this._groupState,t),this.notifyStateChange()}get serverState(){return this._serverState}get groupState(){return this._groupState}};var Ue=class{constructor(t,e,A,s){this.sender=t,this.stateManager=e,this.timeFilter=A,this.onSynchronized=s,this.timeSyncBurstActive=!1,this.timeSyncBurstSentCount=0,this.timeSyncInFlightClientTransmitted=null,this.timeSyncInFlightTimeout=null,this.timeSyncBurstSamples=[]}startAndSchedule(){this.stop(),this.startTimeSyncBurstIfIdle(),this.scheduleNextTimeSyncBurstTick()}scheduleNextTimeSyncBurstTick(){let t=globalThis.setTimeout(()=>{this.startTimeSyncBurstIfIdle(),this.scheduleNextTimeSyncBurstTick()},9e3);this.stateManager.setTimeSyncInterval(t)}startTimeSyncBurstIfIdle(){this.timeSyncBurstActive||(this.timeSyncBurstActive=!0,this.timeSyncBurstSentCount=0,this.timeSyncBurstSamples=[],this.timeSyncInFlightClientTransmitted=null,this.sendNextTimeSyncBurstProbe())}sendNextTimeSyncBurstProbe(){if(!this.timeSyncBurstActive||this.timeSyncInFlightClientTransmitted!==null)return;if(this.timeSyncBurstSentCount>=8){this.finalizeTimeSyncBurst();return}let t=this.sendTimeSync();this.timeSyncBurstSentCount+=1,this.timeSyncInFlightClientTransmitted=t,this.armTimeSyncProbeTimeout(t)}armTimeSyncProbeTimeout(t){this.clearTimeSyncProbeTimeout(),this.timeSyncInFlightTimeout=globalThis.setTimeout(()=>{this.handleTimeSyncProbeTimeout(t)},2e3)}clearTimeSyncProbeTimeout(){this.timeSyncInFlightTimeout!==null&&(clearTimeout(this.timeSyncInFlightTimeout),this.timeSyncInFlightTimeout=null)}handleTimeSyncProbeTimeout(t){!this.timeSyncBurstActive||this.timeSyncInFlightClientTransmitted!==t||(console.warn("Sendspin: Time sync probe timed out, aborting current burst"),this.abortTimeSyncBurst())}finalizeTimeSyncBurst(){this.clearTimeSyncProbeTimeout();let t=this.timeFilter.is_synchronized,e=this.selectTimeSyncBurstCandidate();if(e){let A=Math.max(1e3,Math.trunc(e.rttTerm/2));this.timeFilter.update(e.measurement,A,e.t4)}this.timeSyncBurstActive=!1,this.timeSyncBurstSentCount=0,this.timeSyncInFlightClientTransmitted=null,this.timeSyncBurstSamples=[],!t&&this.timeFilter.is_synchronized&&this.onSynchronized()}selectTimeSyncBurstCandidate(){return this.timeSyncBurstSamples.length===0?null:this.timeSyncBurstSamples.reduce((t,e)=>e.rttTerm<t.rttTerm?e:t)}abortTimeSyncBurst(){this.clearTimeSyncProbeTimeout(),this.timeSyncBurstActive=!1,this.timeSyncBurstSentCount=0,this.timeSyncInFlightClientTransmitted=null,this.timeSyncBurstSamples=[]}stop(){this.stateManager.clearTimeSyncInterval(),this.abortTimeSyncBurst()}handleServerTime(t,e){if(!this.timeSyncBurstActive||this.timeSyncInFlightClientTransmitted===null)return;let A=t.payload.client_transmitted;if(A!==this.timeSyncInFlightClientTransmitted){console.warn("Sendspin: Ignoring out-of-order time response",A,this.timeSyncInFlightClientTransmitted);return}let s=e,n=t.payload.server_received,r=t.payload.server_transmitted,o=Math.trunc((n-A+(r-s))/2),a=Math.max(0,s-A-(r-n));if(this.timeSyncBurstSamples.push({measurement:o,t4:s,rttTerm:a}),this.clearTimeSyncProbeTimeout(),this.timeSyncInFlightClientTransmitted=null,this.timeSyncBurstSentCount>=8){this.finalizeTimeSyncBurst();return}this.sendNextTimeSyncBurstProbe()}sendTimeSync(t=Math.floor(performance.now()*1e3)){let e={type:"client/time",payload:{client_transmitted:t}};return this.sender.sendControl(e),t}};function Pr(){let i=typeof navigator<"u"?navigator.userAgent:"",t=/^((?!chrome|android).)*safari/i.test(i),e=/firefox/i.test(i),A=typeof AudioDecoder<"u";return A||(typeof window<"u"&&!window.isSecureContext?console.warn("[Opus] Running in insecure context, falling back to FLAC/PCM"):console.warn("[Opus] Native decoder not available, falling back to FLAC/PCM")),t?new Set(["pcm","opus"]):e?new Set(["pcm","flac"]):A?new Set(["pcm","opus","flac"]):new Set(["pcm","flac"])}function ii(i){let t=Pr(),e=i.filter(s=>t.has(s));if(!e.includes("flac")&&!e.includes("pcm")){let s=["flac","pcm"].filter(n=>t.has(n));console.warn(`[Codec] No flac or pcm in usable codecs [${e.join(", ")}] (requested [${i.join(", ")}]), advertising [${s.join(", ")}] as fallback`),e.push(...s)}let A=[];for(let s of e)s==="opus"?A.push({codec:"opus",sample_rate:48e3,channels:2,bit_depth:16}):(A.push({codec:s,sample_rate:48e3,channels:2,bit_depth:16}),A.push({codec:s,sample_rate:44100,channels:2,bit_depth:16}));return A}function Jr(i){let t=i.sample_rate*i.channels*Math.ceil(i.bit_depth/8);switch(i.codec){case"opus":return 64e3;case"flac":return t*1.02;default:return t}}function ni(i){let t=Math.max(...i.map(Jr));return Math.ceil(t*30)}function ct(i){return isFinite(i)?Math.max(0,Math.min(5e3,Math.round(i))):0}var ri=5e3,Ur=250,Nr=250,Hr=["volume","mute","set_output_delay"];function Ne(i,t){if(!isFinite(i)||i<0)throw new RangeError(`${t} must be a non-negative finite number`);return Math.round(i)}var He=class{constructor(t,e,A,s,n,r={}){this.sender=t,this.helloContext=e,this.streamHandler=A,this.stateManager=s,this.timeFilter=n,this.activated=!1,this.activeRoles=null,this.lastSentState=null,this.clientName=r.clientName??"Sendspin Player",this.productName=r.productName,this.manufacturer=r.manufacturer,this.softwareVersion=r.softwareVersion,this.codecs=r.codecs??["opus","flac","pcm"],this.bufferCapacity=r.bufferCapacity===void 0?void 0:Math.round(r.bufferCapacity),this.requiredLeadTimeMs=Ne(r.requiredLeadTimeMs??Ur,"requiredLeadTimeMs"),this.minBufferMs=Ne(r.minBufferMs??Nr,"minBufferMs"),this.useHardwareVolume=r.useHardwareVolume??!1,this.onVolumeCommand=r.onVolumeCommand,this.onDelayCommand=r.onDelayCommand,this.getExternalVolume=r.getExternalVolume,this.applicationRoles=r.applicationRoles,this.timeSyncManager=new Ue(t,s,n,()=>{this.stateManager.applyHeldMetadata(o=>this.metadataDelayMs(o)),this.sendStateUpdate()})}handleServerMessage(t,e){switch(t.type){case"server/hello":this.handleServerHello();break;case"server/activate":this.handleServerActivate(t);break;case"server/time":this.timeSyncManager.handleServerTime(t,e);break;case"stream/start":this.handleStreamStart(t);break;case"stream/clear":this.handleStreamClear(t);break;case"stream/end":this.handleStreamEnd(t);break;case"server/command":this.handleServerCommand(t);break;case"server/state":this.handleServerState(t);break;case"group/update":this.stateManager.updateGroupState(t.payload);break}}handleServerHello(){console.log("Sendspin: Connected to server"),this.sendClientHello()}handleServerActivate(t){this.applyActivation(t.payload.active_roles)}resumeActivation(t){this.applyActivation(t)}applyActivation(t){this.activeRoles===null&&this.stateManager.currentStreamFormat!==null&&this.endPlayerStream();let e=!1;if(t!==void 0){let s=new Set(t),n=[...this.activeRoles??[]].filter(r=>!s.has(r));if(e=this.activeRoles===null||n.length>0||s.size!==this.activeRoles.size,this.activeRoles=s,n.includes("player@v1")&&this.stateManager.currentStreamFormat!==null&&this.endPlayerStream(),this.stateManager.discardRoleState(n.map(r=>r.split("@")[0])),this.applicationRoles?.applyActivation(s)&&(this.lastSentState=null),this.activeRoles!==s)return}if(this.activated){e&&this.sendStateUpdate();return}this.activated=!0,this.lastSentState=null,this.sendStateUpdate(),this.timeSyncManager.startAndSchedule();let A=globalThis.setInterval(()=>this.sendStateUpdate(),ri);this.stateManager.setStateUpdateInterval(A)}restartStateUpdateInterval(){let t=globalThis.setInterval(()=>this.sendStateUpdate(),ri);this.stateManager.setStateUpdateInterval(t)}stopTimeSync(){this.timeSyncManager.stop()}resetActivation(t=!1){this.activated=!1,t||(this.activeRoles=null,this.applicationRoles?.deactivateAll()),this.timeSyncManager.stop(),this.stateManager.clearStateUpdateInterval()}handleServerState(t){let{metadata:e}=t.payload,A=0;e&&(A=this.timeFilter.is_synchronized?this.metadataDelayMs(e.timestamp):null),this.stateManager.updateServerState(t.payload,A)}metadataDelayMs(t){return(this.timeFilter.computeClientTime(t)-performance.now()*1e3)/1e3}handleStreamStart(t){let e=t.payload.player;if(!e)return;let A=this.stateManager.currentStreamFormat!==null;this.stateManager.currentStreamFormat=e,console.log(A?"Sendspin: Stream format updated":"Sendspin: Stream started",e),console.log(`Sendspin: Codec=${e.codec.toUpperCase()}, SampleRate=${e.sample_rate}Hz, Channels=${e.channels}, BitDepth=${e.bit_depth}bit`),this.streamHandler.handleStreamStart(e,A),this.stateManager.isPlaying=!0,typeof navigator<"u"&&navigator.mediaSession&&(navigator.mediaSession.playbackState="playing")}handleStreamClear(t){let e=t.payload.roles;(!e||e.includes("player"))&&(console.log("Sendspin: Stream clear (seek)"),this.streamHandler.handleStreamClear())}handleStreamEnd(t){let e=t.payload?.roles;(!e||e.includes("player"))&&(console.log("Sendspin: Stream ended"),this.endPlayerStream())}endPlayerStream(){this.streamHandler.handleStreamEnd(),this.stateManager.currentStreamFormat=null,this.stateManager.isPlaying=!1,typeof navigator<"u"&&navigator.mediaSession&&(navigator.mediaSession.playbackState="paused")}handleServerCommand(t){let e=t.payload.player;if(e){switch(e.command){case"volume":e.volume!==void 0&&(this.stateManager.volume=e.volume,this.streamHandler.handleVolumeUpdate(),this.useHardwareVolume&&this.onVolumeCommand&&this.onVolumeCommand(e.volume,this.stateManager.muted));break;case"mute":e.mute!==void 0&&(this.stateManager.muted=e.mute,this.streamHandler.handleVolumeUpdate(),this.useHardwareVolume&&this.onVolumeCommand&&this.onVolumeCommand(this.stateManager.volume,e.mute));break;case"set_output_delay":{let A=e.output_delay_ms;if(typeof A=="number"&&isFinite(A)){let s=ct(A);this.streamHandler.handleSyncDelayChange(s),this.onDelayCommand?.(s)}break}default:return}this.restartStateUpdateInterval(),this.sendStateUpdate(!0)}}sendClientHello(){let t=ii(this.codecs),e={type:"client/hello",payload:{name:this.clientName,supported_roles:["player@v1","controller@v1","metadata@v1",...this.applicationRoles?.supportedRoles??[]],supported_pair_methods:this.helloContext.pairMethods(),unpaired_access:{enabled:this.helloContext.unpairedAccess},device_info:{product_name:this.productName,manufacturer:this.manufacturer,software_version:this.softwareVersion},"player@v1_support":{supported_formats:t,buffer_capacity:this.bufferCapacity??ni(t)},...this.applicationRoles?.helloSupport}};this.sender.sendControl(e)}setRequiredLeadTimeMs(t){this.requiredLeadTimeMs=Ne(t,"requiredLeadTimeMs"),this.sendStateUpdate()}setMinBufferMs(t){this.minBufferMs=Ne(t,"minBufferMs"),this.sendStateUpdate()}sendStateUpdate(t=!1){if(!this.activated||this.activeRoles?.has("player@v1")&&!this.timeFilter.is_synchronized)return;let e=this.stateManager.volume,A=this.stateManager.muted;if(!t&&this.useHardwareVolume&&this.getExternalVolume){let o=this.getExternalVolume();Number.isNaN(o.volume)||(e=de(o.volume)),A=o.muted}let s={available:!0};this.activeRoles?.has("player@v1")&&(s.player={volume:e,muted:A,output_delay_ms:ct(this.streamHandler.getSyncDelayMs()),required_lead_time_ms:this.requiredLeadTimeMs,min_buffer_ms:this.minBufferMs,supported_commands:[...Hr]}),Object.assign(s,this.applicationRoles?.clientStateObjects());let n=JSON.stringify(s);if(n===this.lastSentState)return;this.lastSentState=n;let r={type:"client/state",payload:s};this.sender.sendControl(r)}sendGoodbye(t){this.sender.sendControl({type:"client/goodbye",payload:{reason:t}})}sendLeave(){this.activated&&this.sender.sendControl({type:"client/leave",payload:{}})}sendCommand(t,e){if(!this.activeRoles?.has("controller@v1"))return;let A=e;if(t==="volume"){let{volume:s}=e;A={volume:de(s)}}else if(t==="seek"){let{position_ms:s}=e,n=this.stateManager.serverState.controller?.seek_max_ms??1/0;A={position_ms:Math.min(n,Math.max(0,Math.round(s)))}}else if(t==="seek_relative"){let{offset_ms:s}=e;A={offset_ms:Math.round(s)}}this.sender.sendControl({type:"client/command",payload:{controller:{command:t,...A}}},"controller@v1")}};var Qe=class{constructor(t){this.ws=null,this.reconnectTimeout=null,this.shouldReconnect=!1,this.isReconnecting=!1,this.reconnectAttempt=0,this.baseDelayMs=Math.max(0,t?.baseDelayMs??1e3),this.maxDelayMs=Math.max(this.baseDelayMs,t?.maxDelayMs??15e3),this.maxAttempts=t?.maxAttempts===void 0?1/0:Math.max(0,t.maxAttempts),this.onReconnecting=t?.onReconnecting,this.onReconnected=t?.onReconnected,this.onExhausted=t?.onExhausted}adopt(t,e,A,s,n){if(t.readyState!==WebSocket.OPEN&&t.readyState!==WebSocket.CONNECTING)throw new Error(`Sendspin: Cannot adopt WebSocket in readyState ${t.readyState} (must be OPEN or CONNECTING)`);if(this.onOpenHandler=e,this.onMessageHandler=A,this.onErrorHandler=s,this.onCloseHandler=n,this.ws){let r=this.ws;r.onopen=null,r.onmessage=null,r.onerror=null,r.onclose=null,r.close(),this.ws=null}return this.ws=t,this.ws.binaryType="arraybuffer",this.shouldReconnect=!1,this.clearReconnectState(),this.ws.onmessage=r=>{this.onMessageHandler&&this.onMessageHandler(r)},this.ws.onerror=r=>{console.error("Sendspin: WebSocket error",r),this.onErrorHandler&&this.onErrorHandler(r)},this.ws.onclose=()=>{console.log("Sendspin: WebSocket disconnected"),this.onCloseHandler&&this.onCloseHandler()},new Promise((r,o)=>{let a=()=>{this.onOpenHandler&&this.onOpenHandler(),r()};if(t.readyState===WebSocket.OPEN){console.log("Sendspin: Adopted open WebSocket"),a();return}let c=this.ws.onclose;this.ws.onopen=()=>{console.log("Sendspin: Adopted WebSocket connected"),a()},this.ws.onclose=l=>{c&&c.call(this.ws,l),o(new Error("Sendspin: Adopted WebSocket closed before opening"))}})}async connect(t,e,A,s,n){if(this.onOpenHandler=e,this.onMessageHandler=A,this.onErrorHandler=s,this.onCloseHandler=n,this.shouldReconnect=!1,this.clearReconnectState(),this.ws){let r=this.ws;r.onopen=null,r.onmessage=null,r.onerror=null,r.onclose=null,r.close(),this.ws=null}return this.openSocket(t)}openSocket(t){return new Promise((e,A)=>{try{console.log("Sendspin: Connecting to",t);let s=new WebSocket(t);this.ws=s,this.ws.binaryType="arraybuffer",this.shouldReconnect=!0;let n=!1;this.ws.onopen=()=>{console.log("Sendspin: WebSocket connected"),n=!0;let r=this.isReconnecting;this.isReconnecting=!1,this.reconnectAttempt=0,this.onOpenHandler&&this.onOpenHandler(),r&&this.onReconnected?.(),e()},this.ws.onmessage=r=>{this.onMessageHandler&&this.onMessageHandler(r)},this.ws.onerror=r=>{console.error("Sendspin: WebSocket error",r),this.onErrorHandler&&this.onErrorHandler(r),A(r)},this.ws.onclose=()=>{this.ws!==null&&this.ws!==s||(console.log("Sendspin: WebSocket disconnected"),n&&this.onCloseHandler&&this.onCloseHandler(),this.shouldReconnect&&this.scheduleReconnect(t))}}catch(s){console.error("Sendspin: Failed to connect",s),A(s)}})}getReconnectDelayMs(t){let e=this.baseDelayMs*2**(t-1);return Math.min(e,this.maxDelayMs)}scheduleReconnect(t){this.reconnectTimeout!==null&&(clearTimeout(this.reconnectTimeout),this.reconnectTimeout=null);let e=this.reconnectAttempt+1;if(e>this.maxAttempts){console.warn(`Sendspin: Reconnect exhausted after ${this.maxAttempts} attempt(s)`),this.shouldReconnect=!1,this.isReconnecting=!1,this.reconnectAttempt=0,this.onExhausted?.();return}this.reconnectAttempt=e,this.isReconnecting=!0;let A=this.getReconnectDelayMs(e);this.reconnectTimeout=globalThis.setTimeout(()=>{this.reconnectTimeout=null,this.shouldReconnect&&(this.onReconnecting?.(e),console.log(`Sendspin: Attempting to reconnect (attempt ${e}${this.maxAttempts===1/0?"":`/${this.maxAttempts}`})...`),this.openSocket(t).catch(s=>{console.error("Sendspin: Reconnection failed",s)}))},A)}clearReconnectState(){this.reconnectTimeout!==null&&(clearTimeout(this.reconnectTimeout),this.reconnectTimeout=null),this.isReconnecting=!1,this.reconnectAttempt=0}disconnect(){this.shouldReconnect=!1,this.clearReconnectState(),this.ws&&(this.ws.close(),this.ws=null)}sendText(t){this.ws&&this.ws.readyState===WebSocket.OPEN?this.ws.send(t):console.warn("Sendspin: Cannot send text, WebSocket not connected")}sendBinary(t){this.ws&&this.ws.readyState===WebSocket.OPEN?this.ws.send(t):console.warn("Sendspin: Cannot send binary, WebSocket not connected")}isConnected(){return this.ws!==null&&this.ws.readyState===WebSocket.OPEN}getReadyState(){return this.ws?this.ws.readyState:WebSocket.CLOSED}};function oi(i){return i<0?-Math.round(-i):Math.round(i)}var he=class{constructor(t=0,e=2,A=2,s=1e-11){this._last_update=0,this._count=0,this._measurements_processed=0,this._offset=0,this._drift=0,this._offset_covariance=1/0,this._offset_drift_covariance=0,this._drift_covariance=0,this._use_drift=!1,this._offset_process_variance=t*t,this._drift_process_variance=s*s,this._forget_variance_factor=e*e,this._drift_significance_threshold_squared=A*A,this._current_time_element=this._createDefaultTimeElement()}_createDefaultTimeElement(){return{last_update:0,offset:0,drift:0}}update(t,e,A){if(A<=this._last_update||e<=0)return;let s=A-this._last_update;this._last_update=A,this._measurements_processed+=1;let n=e*.5,r=n*n;if(this._count<=0){this._count+=1,this._offset=t,this._offset_covariance=r,this._drift=0,this._current_time_element={last_update:this._last_update,offset:this._offset,drift:this._drift},this._use_drift=!1;return}if(this._count===1){this._count+=1,this._drift=(t-this._offset)/s,this._offset=t,this._drift_covariance=(this._offset_covariance+r)/(s*s),this._offset_covariance=r,this._current_time_element={last_update:this._last_update,offset:this._offset,drift:this._drift},this._use_drift=!1;return}let o=this._offset+this._drift*s,a=s*s,c=s*this._drift_process_variance,l=this._drift_covariance+c,d=this._offset_drift_covariance+this._drift_covariance*s+0,u=s*this._offset_process_variance,p=this._offset_covariance+2*this._offset_drift_covariance*s+this._drift_covariance*a+u,f=t-o,m=e*3;this._count<100?this._count+=1:Math.abs(f)>m&&(l*=this._forget_variance_factor,d*=this._forget_variance_factor,p*=this._forget_variance_factor);let g=1/(p+r),_=p*g,x=d*g;this._offset=o+_*f,this._drift+=x*f,this._drift_covariance=l-x*d,this._offset_drift_covariance=d-x*p,this._offset_covariance=p-_*p;let b=this._drift*this._drift;this._use_drift=b>this._drift_significance_threshold_squared*this._drift_covariance,this._current_time_element={last_update:this._last_update,offset:this._offset,drift:this._drift}}computeServerTime(t){let e=t-this._current_time_element.last_update,A=this._use_drift?this._current_time_element.drift:0,s=oi(this._current_time_element.offset+A*e);return t+s}computeClientTime(t){let e=this._use_drift?this._current_time_element.drift:0;return oi((t-this._current_time_element.offset+e*this._current_time_element.last_update)/(1+e))}reset(){this._count=0,this._measurements_processed=0,this._last_update=0,this._offset=0,this._drift=0,this._offset_covariance=1/0,this._offset_drift_covariance=0,this._drift_covariance=0,this._use_drift=!1,this._current_time_element=this._createDefaultTimeElement()}get count(){return this._measurements_processed}get is_synchronized(){return this._count>=1&&isFinite(this._offset_covariance)}get error(){return Math.round(Math.sqrt(this._offset_covariance))}get covariance(){return Math.round(this._offset_covariance)}get offset(){return this._offset}get drift(){return this._drift}};var ai="sendspin-static-delay-ms-v2",Fe=class{constructor(t){this.storage=t}load(){if(!this.storage)return null;try{let t=this.storage.getItem(ai);if(t===null)return null;let e=parseFloat(t);return isNaN(e)?null:ct(e)}catch{return null}}save(t){if(this.storage)try{this.storage.setItem(ai,t.toString())}catch{}}};var ci="sendspin-volume",li="sendspin-muted",Ke=class{constructor(t){this.storage=t}load(){if(!this.storage)return{volume:null,muted:null};try{let t=parseFloat(this.storage.getItem(ci)??""),e=this.storage.getItem(li);return{volume:isNaN(t)?null:t,muted:e==="true"?!0:e==="false"?!1:null}}catch{return{volume:null,muted:null}}}saveVolume(t){this.save(ci,t.toString())}saveMuted(t){this.save(li,t.toString())}save(t,e){if(this.storage)try{this.storage.setItem(t,e)}catch{}}};var Ge=BigInt(4294967295),di=BigInt(32);function Qr(i,t=!1){return t?{h:Number(i&Ge),l:Number(i>>di&Ge)}:{h:Number(i>>di&Ge)|0,l:Number(i&Ge)|0}}function hi(i,t=!1){let e=i.length,A=new Uint32Array(e),s=new Uint32Array(e);for(let n=0;n<e;n++){let{h:r,l:o}=Qr(i[n],t);[A[n],s[n]]=[r,o]}return[A,s]}var Fr=i=>i/2**32|0,Kr=i=>i>>>0;function ui(i,t,e,A){let s=Fr(e),n=Kr(e);i.setUint32(t,A?n:s,A),i.setUint32(t+4,A?s:n,A)}var NA=(i,t,e)=>i>>>e,HA=(i,t,e)=>i<<32-e|t>>>e,It=(i,t,e)=>i>>>e|t<<32-e,Rt=(i,t,e)=>i<<32-e|t>>>e,ue=(i,t,e)=>i<<64-e|t>>>e-32,pe=(i,t,e)=>i>>>e-32|t<<64-e;function ft(i,t,e,A){let s=(t>>>0)+(A>>>0);return{h:i+e+(s/2**32|0)|0,l:s|0}}var pi=(i,t,e)=>(i>>>0)+(t>>>0)+(e>>>0),fi=(i,t,e,A)=>t+e+A+(i/2**32|0)|0,mi=(i,t,e,A)=>(i>>>0)+(t>>>0)+(e>>>0)+(A>>>0),gi=(i,t,e,A,s)=>t+e+A+s+(i/2**32|0)|0,yi=(i,t,e,A,s)=>(i>>>0)+(t>>>0)+(e>>>0)+(A>>>0)+(s>>>0),_i=(i,t,e,A,s,n)=>t+e+A+s+n+(i/2**32|0)|0;function qe(i){return i instanceof Uint8Array||ArrayBuffer.isView(i)&&i.constructor.name==="Uint8Array"&&"BYTES_PER_ELEMENT"in i&&i.BYTES_PER_ELEMENT===1}var QA=i=>i?`"${i}" `:"";function Lt(i,t=""){if(typeof i!="number")throw new TypeError(QA(t)+"expected number, got "+typeof i);if(!Number.isSafeInteger(i)||i<0)throw new RangeError(QA(t)+"expected integer >= 0, got "+i);return i}function wt(i,t,e=""){if(qe(i)&&(t===void 0||i.length===t))return i;t!==void 0&&Lt(t,"length");let A=qe(i),s=t!==void 0?` of length ${t}`:"",n=A?`length=${i.length}`:`type=${typeof i}`,r=QA(e)+"expected Uint8Array"+s+", got "+n;throw A?new RangeError(r):new TypeError(r)}function xi(i){if(typeof i!="function"||typeof i.create!="function")throw new TypeError("expected hash wrapped by utils.createHasher");if(Lt(i.outputLen),Lt(i.blockLen),i.outputLen<1||i.blockLen<1)throw new Error("hash blockLen / outputLen must be >= 1")}var qr=(i,t)=>{if(i===null||typeof i!="object"||Array.isArray(i))throw new TypeError((t==="object"?"":`"${t}" `)+"expected object, got type="+typeof i)},bi=(i,t)=>{qr(i,t);let e=Object.getPrototypeOf(i);if(e!==Object.prototype&&e!==null)throw new TypeError(`"${t}" expected plain object`);if(Object.hasOwn(i,"__proto__"))throw new TypeError(`"${t}.__proto__" is not allowed`)};function te(i,t=!0){if(i.destroyed)throw new Error("hash was destroyed");if(t&&i.finished)throw new Error("digest() was already called")}function Ze(i,t){wt(i,void 0,"output");let e=t.outputLen;if(!(i.length>=e))throw new RangeError('"output" expected length >= '+e)}function Ot(...i){for(let t=0;t<i.length;t++)i[t].fill(0)}function je(i){return new DataView(i.buffer,i.byteOffset,i.byteLength)}function lt(i,t){return i<<32-t|i>>>t}var Si=typeof Uint8Array.from([]).toHex=="function"&&typeof Uint8Array.fromHex=="function",Zr=Array.from({length:256},(i,t)=>t.toString(16).padStart(2,"0"));function Ye(i){if(wt(i),Si)return i.toHex();let t="";for(let e=0;e<i.length;e++)t+=Zr[i[e]];return t}function wi(i){return i>=48&&i<=57?i-48:i>=65&&i<=70?i-55:i>=97&&i<=102?i-87:void 0}function FA(i){if(typeof i!="string")throw new TypeError("hex string expected, got "+typeof i);if(Si)try{return Uint8Array.fromHex(i)}catch(s){throw s instanceof SyntaxError?new RangeError(s.message):s}let t=i.length,e=t/2;if(t%2)throw new RangeError("hex string expected, got unpadded hex of length "+t);let A=new Uint8Array(e);for(let s=0,n=0;s<e;s++,n+=2){let r=wi(i.charCodeAt(n)),o=wi(i.charCodeAt(n+1));if(r===void 0||o===void 0){let a=i[n]+i[n+1];throw new RangeError('hex string expected, got non-hex character "'+a+'" at index '+n)}A[s]=r*16+o}return A}function jr(i,t,e="opts"){return bi(i,"defaults"),t!==void 0&&bi(t,e),Object.assign(Object.create(null),i,t)}function KA(i,t={}){if(typeof i!="function")throw new TypeError('"hashCons" expected function, got type='+typeof i);t=jr({},t,"info");let e=(s,n)=>i(n).update(s).digest(),A=i(void 0);return e.outputLen=A.outputLen,e.blockLen=A.blockLen,e.canXOF=A.canXOF,e.create=s=>i(s),Object.assign(e,t),Object.freeze(e)}function vi(i=32){Lt(i,"bytesLength");let t=typeof globalThis=="object"?globalThis.crypto:null;if(typeof t?.getRandomValues!="function")throw new Error("crypto.getRandomValues must be defined");if(i>65536)throw new RangeError(`"bytesLength" expected <= 65536, got ${i}`);return t.getRandomValues(new Uint8Array(i))}var GA=i=>({oid:Uint8Array.from([6,9,96,134,72,1,101,3,4,2,i])});function Mi(i,t,e){return i&t^~i&e}function ki(i,t,e){return i&t^i&e^t&e}var fe=class{constructor(t,e,A,s){w(this,"blockLen");w(this,"outputLen");w(this,"canXOF",!1);w(this,"padOffset");w(this,"isLE");w(this,"buffer");w(this,"view");w(this,"finished",!1);w(this,"length",0);w(this,"pos",0);w(this,"destroyed",!1);this.blockLen=t,this.outputLen=e,this.padOffset=A,this.isLE=s,this.buffer=new Uint8Array(t),this.view=je(this.buffer)}update(t){te(this),wt(t);let{view:e,buffer:A,blockLen:s}=this,n=t.length,r=!1;for(let o=0;o<n;){let a=Math.min(s-this.pos,n-o);if(a===s){let c=je(t);for(;s<=n-o;o+=s)this.process(c,o);r=!0;continue}A.set(o===0&&a===n?t:t.subarray(o,o+a),this.pos),this.pos+=a,o+=a,this.pos===s&&(this.process(e,0),this.pos=0,r=!0)}return this.length+=t.length,r&&this.roundClean(),this}digestInto(t){te(this),Ze(t,this),this.finished=!0;let{buffer:e,view:A,blockLen:s,isLE:n}=this,{pos:r}=this;e[r++]=128,e.fill(0,r),this.padOffset>s-r&&(this.process(A,0),e.fill(0)),ui(A,s-8,this.length*8,n),this.process(A,0),this.roundClean();let o=t===e?A:je(t),a=this.outputLen,c=a/4,l=this.get();if(a%4||c>l.length)throw new Error("invalid outputLen");for(let h=0;h<c;h++)o.setUint32(4*h,l[h],n)}digest(){let{buffer:t,outputLen:e}=this;this.digestInto(t);let A=t.slice(0,e);return this.destroy(),A}_cloneIntoMeta(t){let{buffer:e,length:A,finished:s,destroyed:n,pos:r}=this;return t.destroyed=n,t.finished=s,t.length=A,t.pos=r,r&&t.buffer.set(e),t}clone(){return this._cloneInto()}},Ci=Uint32Array.from([1779033703,3144134277,1013904242,2773480762,1359893119,2600822924,528734635,1541459225]);var Ei=Uint32Array.from([1779033703,4089235720,3144134277,2227873595,1013904242,4271175723,2773480762,1595750129,1359893119,2917565137,2600822924,725511199,528734635,4215389547,1541459225,327033209]);var Yr=Uint32Array.from([1116352408,1899447441,3049323471,3921009573,961987163,1508970993,2453635748,2870763221,3624381080,310598401,607225278,1426881987,1925078388,2162078206,2614888103,3248222580,3835390401,4022224774,264347078,604807628,770255983,1249150122,1555081692,1996064986,2554220882,2821834349,2952996808,3210313671,3336571891,3584528711,113926993,338241895,666307205,773529912,1294757372,1396182291,1695183700,1986661051,2177026350,2456956037,2730485921,2820302411,3259730800,3345764771,3516065817,3600352804,4094571909,275423344,430227734,506948616,659060556,883997877,958139571,1322822218,1537002063,1747873779,1955562222,2024104815,2227730452,2361852424,2428436474,2756734187,3204031479,3329325298]),Mt=new Uint32Array(64),qA=class extends fe{constructor(e,A){super(64,e,8,!1);w(this,"A",0);w(this,"B",0);w(this,"C",0);w(this,"D",0);w(this,"E",0);w(this,"F",0);w(this,"G",0);w(this,"H",0);this.A=A[0]|0,this.B=A[1]|0,this.C=A[2]|0,this.D=A[3]|0,this.E=A[4]|0,this.F=A[5]|0,this.G=A[6]|0,this.H=A[7]|0}get(){let{A:e,B:A,C:s,D:n,E:r,F:o,G:a,H:c}=this;return[e,A,s,n,r,o,a,c]}set(e,A,s,n,r,o,a,c){this.A=e|0,this.B=A|0,this.C=s|0,this.D=n|0,this.E=r|0,this.F=o|0,this.G=a|0,this.H=c|0}_cloneInto(e){return(e||(e=new this.constructor)).set(...this.get()),this._cloneIntoMeta(e)}process(e,A){for(let d=0;d<16;d++,A+=4)Mt[d]=e.getUint32(A,!1);for(let d=16;d<64;d++){let u=Mt[d-15],p=Mt[d-2],f=lt(u,7)^lt(u,18)^u>>>3,m=lt(p,17)^lt(p,19)^p>>>10;Mt[d]=m+Mt[d-7]+f+Mt[d-16]|0}let{A:s,B:n,C:r,D:o,E:a,F:c,G:l,H:h}=this;for(let d=0;d<64;d++){let u=lt(a,6)^lt(a,11)^lt(a,25),p=h+u+Mi(a,c,l)+Yr[d]+Mt[d]|0,m=(lt(s,2)^lt(s,13)^lt(s,22))+ki(s,n,r)|0;h=l,l=c,c=a,a=o+p|0,o=r,r=n,n=s,s=p+m|0}s=s+this.A|0,n=n+this.B|0,r=r+this.C|0,o=o+this.D|0,a=a+this.E|0,c=c+this.F|0,l=l+this.G|0,h=h+this.H|0,this.set(s,n,r,o,a,c,l,h)}roundClean(){Ot(Mt)}destroy(){this.destroyed=!0,this.set(0,0,0,0,0,0,0,0),Ot(this.buffer)}},ZA=class extends qA{constructor(){super(32,Ci)}};var Ti=hi(["0x428a2f98d728ae22","0x7137449123ef65cd","0xb5c0fbcfec4d3b2f","0xe9b5dba58189dbbc","0x3956c25bf348b538","0x59f111f1b605d019","0x923f82a4af194f9b","0xab1c5ed5da6d8118","0xd807aa98a3030242","0x12835b0145706fbe","0x243185be4ee4b28c","0x550c7dc3d5ffb4e2","0x72be5d74f27b896f","0x80deb1fe3b1696b1","0x9bdc06a725c71235","0xc19bf174cf692694","0xe49b69c19ef14ad2","0xefbe4786384f25e3","0x0fc19dc68b8cd5b5","0x240ca1cc77ac9c65","0x2de92c6f592b0275","0x4a7484aa6ea6e483","0x5cb0a9dcbd41fbd4","0x76f988da831153b5","0x983e5152ee66dfab","0xa831c66d2db43210","0xb00327c898fb213f","0xbf597fc7beef0ee4","0xc6e00bf33da88fc2","0xd5a79147930aa725","0x06ca6351e003826f","0x142929670a0e6e70","0x27b70a8546d22ffc","0x2e1b21385c26c926","0x4d2c6dfc5ac42aed","0x53380d139d95b3df","0x650a73548baf63de","0x766a0abb3c77b2a8","0x81c2c92e47edaee6","0x92722c851482353b","0xa2bfe8a14cf10364","0xa81a664bbc423001","0xc24b8b70d0f89791","0xc76c51a30654be30","0xd192e819d6ef5218","0xd69906245565a910","0xf40e35855771202a","0x106aa07032bbd1b8","0x19a4c116b8d2d0c8","0x1e376c085141ab53","0x2748774cdf8eeb99","0x34b0bcb5e19b48a8","0x391c0cb3c5c95a63","0x4ed8aa4ae3418acb","0x5b9cca4f7763e373","0x682e6ff3d6b2b8a3","0x748f82ee5defb2fc","0x78a5636f43172f60","0x84c87814a1f0ab72","0x8cc702081a6439ec","0x90befffa23631e28","0xa4506cebde82bde9","0xbef9a3f7b2c67915","0xc67178f2e372532b","0xca273eceea26619c","0xd186b8c721c0c207","0xeada7dd6cde0eb1e","0xf57d4f7fee6ed178","0x06f067aa72176fba","0x0a637dc5a2c898a6","0x113f9804bef90dae","0x1b710b35131c471b","0x28db77f523047d84","0x32caab7b40c72493","0x3c9ebe0a15c9bebc","0x431d67c49c100d4c","0x4cc5d4becb3e42b6","0x597f299cfc657e2a","0x5fcb6fab3ad6faec","0x6c44198c4a475817"].map(i=>BigInt(i))),Wr=Ti[0],Vr=Ti[1],kt=new Uint32Array(80),Ct=new Uint32Array(80),jA=class extends fe{constructor(e,A){super(128,e,16,!1);w(this,"Ah",0);w(this,"Al",0);w(this,"Bh",0);w(this,"Bl",0);w(this,"Ch",0);w(this,"Cl",0);w(this,"Dh",0);w(this,"Dl",0);w(this,"Eh",0);w(this,"El",0);w(this,"Fh",0);w(this,"Fl",0);w(this,"Gh",0);w(this,"Gl",0);w(this,"Hh",0);w(this,"Hl",0);this.Ah=A[0]|0,this.Al=A[1]|0,this.Bh=A[2]|0,this.Bl=A[3]|0,this.Ch=A[4]|0,this.Cl=A[5]|0,this.Dh=A[6]|0,this.Dl=A[7]|0,this.Eh=A[8]|0,this.El=A[9]|0,this.Fh=A[10]|0,this.Fl=A[11]|0,this.Gh=A[12]|0,this.Gl=A[13]|0,this.Hh=A[14]|0,this.Hl=A[15]|0}get(){let{Ah:e,Al:A,Bh:s,Bl:n,Ch:r,Cl:o,Dh:a,Dl:c,Eh:l,El:h,Fh:d,Fl:u,Gh:p,Gl:f,Hh:m,Hl:g}=this;return[e,A,s,n,r,o,a,c,l,h,d,u,p,f,m,g]}set(e,A,s,n,r,o,a,c,l,h,d,u,p,f,m,g){this.Ah=e|0,this.Al=A|0,this.Bh=s|0,this.Bl=n|0,this.Ch=r|0,this.Cl=o|0,this.Dh=a|0,this.Dl=c|0,this.Eh=l|0,this.El=h|0,this.Fh=d|0,this.Fl=u|0,this.Gh=p|0,this.Gl=f|0,this.Hh=m|0,this.Hl=g|0}_cloneInto(e){return(e||(e=new this.constructor)).set(...this.get()),this._cloneIntoMeta(e)}process(e,A){for(let b=0;b<16;b++,A+=4)kt[b]=e.getUint32(A),Ct[b]=e.getUint32(A+=4);for(let b=16;b<80;b++){let v=kt[b-15]|0,S=Ct[b-15]|0,O=It(v,S,1)^It(v,S,8)^NA(v,S,7),$=Rt(v,S,1)^Rt(v,S,8)^HA(v,S,7),C=kt[b-2]|0,k=Ct[b-2]|0,I=It(C,k,19)^ue(C,k,61)^NA(C,k,6),D=Rt(C,k,19)^pe(C,k,61)^HA(C,k,6),R=mi($,D,Ct[b-7],Ct[b-16]),B=gi(R,O,I,kt[b-7],kt[b-16]);kt[b]=B|0,Ct[b]=R|0}let{Ah:s,Al:n,Bh:r,Bl:o,Ch:a,Cl:c,Dh:l,Dl:h,Eh:d,El:u,Fh:p,Fl:f,Gh:m,Gl:g,Hh:_,Hl:x}=this;for(let b=0;b<80;b++){let v=It(d,u,14)^It(d,u,18)^ue(d,u,41),S=Rt(d,u,14)^Rt(d,u,18)^pe(d,u,41),O=d&p^~d&m,$=u&f^~u&g,C=yi(x,S,$,Vr[b],Ct[b]),k=_i(C,_,v,O,Wr[b],kt[b]),I=C|0,D=It(s,n,28)^ue(s,n,34)^ue(s,n,39),R=Rt(s,n,28)^pe(s,n,34)^pe(s,n,39),B=s&r^s&a^r&a,P=n&o^n&c^o&c;_=m|0,x=g|0,m=p|0,g=f|0,p=d|0,f=u|0,{h:d,l:u}=ft(l|0,h|0,k|0,I|0),l=a|0,h=c|0,a=r|0,c=o|0,r=s|0,o=n|0;let E=pi(I,R,P);s=fi(E,k,D,B),n=E|0}({h:s,l:n}=ft(this.Ah|0,this.Al|0,s|0,n|0)),{h:r,l:o}=ft(this.Bh|0,this.Bl|0,r|0,o|0),{h:a,l:c}=ft(this.Ch|0,this.Cl|0,a|0,c|0),{h:l,l:h}=ft(this.Dh|0,this.Dl|0,l|0,h|0),{h:d,l:u}=ft(this.Eh|0,this.El|0,d|0,u|0),{h:p,l:f}=ft(this.Fh|0,this.Fl|0,p|0,f|0),{h:m,l:g}=ft(this.Gh|0,this.Gl|0,m|0,g|0),{h:_,l:x}=ft(this.Hh|0,this.Hl|0,_|0,x|0),this.set(s,n,r,o,a,c,l,h,d,u,p,f,m,g,_,x)}roundClean(){Ot(kt,Ct)}destroy(){this.destroyed=!0,Ot(this.buffer),this.set(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0)}},YA=class extends jA{constructor(){super(64,Ei)}};var tt=KA(()=>new ZA,GA(1));var me=KA(()=>new YA,GA(3));function Ve(i,t,e=()=>{}){if(!Array.isArray(i))throw new TypeError(`"${t}" expected array, got type=${typeof i}`);for(let A=0;A<i.length;A++)e(i[A],`${t}[${A}]`);return i}var xt=(i,t,e)=>wt(i,t,e),WA=Lt;function Et(i,t="object"){if(i===null||typeof i!="object"||Array.isArray(i))throw new TypeError(t==="object"?"expected valid options object":`"${t}" expected object, got type=${typeof i}`);return i}function $t(i,t){if(typeof i!="function")throw new TypeError(`"${t}" is invalid: expected function, got ${typeof i}`);return i}var Ii=Ye;var Ri=i=>FA(i),Xe=qe,tA=i=>vi(i),We=BigInt(0),Di=BigInt(1),Xr=i=>i?`"${i}" `:"";function Bt(i,t=""){if(typeof i!="boolean")throw new TypeError(Xr(t)+"expected boolean, got type="+typeof i);return i}function to(i){if(typeof i=="bigint"){if(!Tt(i))throw new RangeError("positive bigint expected, got "+i)}else WA(i);return i}function ge(i,t=""){if(typeof i!="number"){let e=t&&`"${t}" `;throw new TypeError(e+"expected number, got type="+typeof i)}if(!Number.isSafeInteger(i)){let e=t&&`"${t}" `;throw new RangeError(e+"expected safe integer, got "+i)}}function Li(i){if(typeof i!="string")throw new TypeError("hex string expected, got "+typeof i);return i===""?We:BigInt("0x"+i)}function eA(i){return Li(Ye(i))}function zt(i){return Li(Ye(Pt(wt(i)).reverse()))}function VA(i,t){if(Lt(t),t===0)throw new Error("zero output length is invalid");i=to(i);let e=t*2,A=i.toString(16);if(A.length>e)throw new RangeError("number is too large");return FA(A.padStart(e,"0"))}function AA(i,t){return VA(i,t).reverse()}function Pt(i){return Uint8Array.from(xt(i))}function Tt(i){return typeof i=="bigint"&&We<=i}function XA(i,t,e){return Tt(i)&&Tt(t)&&Tt(e)&&t<=i&&i<e}function Jt(i,t,e,A){if(!XA(t,e,A))throw new RangeError("expected valid "+i+": "+e+" <= n < "+A+", got "+t)}function ts(i){if(i<We)throw new Error("expected non-negative bigint, got "+i);return i===We?0:i.toString(2).length}var Oi=i=>(ge(i,"n"),(Di<<BigInt(i))-Di);function Ut(i,t={},e={},A="object"){Et(i,A),Et(t,"fields"),Et(e,"optFields");function s(r,o,a){let c=A==="object"?`param "${String(r)}"`:`"${A}.${String(r)}"`,l=i[r];if(!Object.hasOwn(i,r)&&(a?l!==void 0:o!=="function"))throw new TypeError(`${c} is invalid: expected own property`);if(a&&l===void 0)return;let h=typeof l;if(h!==o||l===null)throw new TypeError(`${c} is invalid: expected ${o}, got ${h}`)}let n=(r,o)=>Object.entries(r).forEach(([a,c])=>s(a,c,o));n(t,!1),n(e,!0)}var Y=BigInt(0),K=BigInt(1),Nt=BigInt(2),zi=BigInt(3),es=BigInt(4),Pi=BigInt(5),eo=BigInt(7),Ji=BigInt(8),Ao=BigInt(9),so=BigInt(15),Ui=BigInt(16),io=BigInt("0x10000000000000000");function F(i,t){if(t<=Y)throw new Error("mod: expected positive modulus, got "+t);let e=i%t;return e>=Y?e:t+e}function no(i,t,e){if(e<=K)throw new Error("pow: expected modulus > 1, got "+e);if(typeof t!="bigint")throw new TypeError("invalid exponent: expected bigint, got "+typeof t);if(t<Y)throw new Error("invalid exponent, negatives unsupported");if(t===Y)return K;if(t===K)return i;let A=i%e;if(A<Y&&(A+=e),t<io){let o=K;for(;t>Y;)t&K&&(o=o*A%e),A=A*A%e,t>>=K;return o}let s=[];for(;t>Y;)s.push(Number(t&so)),t>>=es;let n=new Array(16);n[0]=K,n[1]=A;for(let o=2;o<16;o++)n[o]=n[o-1]*A%e;let r=n[s[s.length-1]];for(let o=s.length-2;o>=0;o--){r=r*r%e,r=r*r%e,r=r*r%e,r=r*r%e;let a=s[o];a!==0&&(r=r*n[a]%e)}return r}function rt(i,t,e){if(e<=K)throw new Error("pow2: expected modulus > 1, got "+e);if(t<Y)throw new Error("pow2: expected non-negative exponent, got "+t);let A=i;for(;t-- >Y;)A*=A,A%=e;return A}function $i(i,t){if(i===Y)throw new Error("invert: expected non-zero number");if(t<=K)throw new Error("invert: expected modulus > 1, got "+t);let e=F(i,t),A=t,s=Y,n=K;for(;e!==Y;){let o=A/e,a=A-e*o,c=s-n*o;A=e,e=a,s=n,n=c}if(A!==K)throw new Error("invert: does not exist");return F(s,t)}function As(i,t,e){let A=i;if(!A.eql(A.sqr(t),e))throw new Error("Cannot find square root")}function ss(i,t){if((i&K)===Y)throw new Error(t+": expected odd modulus, got "+i)}function Ni(i,t){let e=i,A=(e.ORDER+K)/es,s=e.pow(t,A);return As(e,s,t),s}function ro(i,t){let e=i,A=(e.ORDER-Pi)/Ji,s=e.mul(t,Nt),n=e.pow(s,A),r=e.mul(t,n),o=e.mul(e.mul(r,Nt),n),a=e.mul(r,e.sub(o,e.ONE));return As(e,a,t),a}function oo(i){let t=nA(i),e=Hi(i),A=e(t,t.neg(t.ONE)),s=e(t,A),n=e(t,t.neg(A)),r=(i+eo)/Ui;return((o,a)=>{let c=o,l=c.pow(a,r),h=c.mul(l,A),d=c.mul(l,s),u=c.mul(l,n),p=c.eql(c.sqr(h),a),f=c.eql(c.sqr(d),a);l=c.cmov(l,h,p),h=c.cmov(u,d,f);let m=c.eql(c.sqr(h),a),g=c.cmov(l,h,m);return As(c,g,a),g})}function Hi(i){if(i<zi)throw new Error("sqrt is not defined for small field");ss(i,"tonelliShanks");let t=i-K,e=0;for(;t%Nt===Y;)t/=Nt,e++;let A=Nt,s=nA(i);for(;ye(s,A)===1;)if(A++>1e3)throw new Error("Cannot find square root: probably non-prime P");if(e===1)return Ni;let n=s.pow(A,t),r=(t+K)/Nt;return function(a,c){let l=a;if(l.is0(c))return c;if(ye(l,c)!==1)throw new Error("Cannot find square root");let h=e,d=l.mul(l.ONE,n),u=l.pow(c,t),p=l.pow(c,r);for(;!l.eql(u,l.ONE);){if(l.is0(u))throw new Error("Cannot find square root: probably non-prime P");let f=1,m=l.sqr(u);for(;!l.eql(m,l.ONE);)if(f++,m=l.sqr(m),f===h)throw new Error("Cannot find square root");let g=K<<BigInt(h-f-1),_=l.pow(d,g);h=f,d=l.sqr(_),u=l.mul(u,d),p=l.mul(p,_)}return p}}function ao(i){return ss(i,"Fp.sqrt"),i%es===zi?Ni:i%Ji===Pi?ro:i%Ui===Ao?oo(i):Hi(i)}var Qi=(i,t)=>(F(i,t)&K)===K,co=["create","isValid","is0","neg","inv","sqrt","sqr","eql","add","sub","mul","pow","div","addN","subN","mulN","sqrN"];function ee(i){if(Et(i,"field"),typeof i.ORDER!="bigint")throw new TypeError('param "ORDER" is invalid: expected bigint, got '+typeof i.ORDER);ge(i.BYTES,"BYTES"),ge(i.BITS,"BITS");for(let t of co)$t(i[t],"field."+t);if(i.BYTES<1||i.BITS<1)throw new Error("invalid field: expected BYTES/BITS > 0");if(i.ORDER<=K)throw new Error("invalid field: expected ORDER > 1, got "+i.ORDER);return i}function iA(i,t,e=!1){ee(i),Ve(t,"nums"),Bt(e,"passZero");let A=i,s=new Array(t.length).fill(e?A.ZERO:void 0),n=t.reduce((o,a,c)=>A.is0(a)?o:(s[c]=o,A.mul(o,a)),A.ONE),r=A.inv(n);return t.reduceRight((o,a,c)=>A.is0(a)?o:(s[c]=A.mul(o,s[c]),A.mul(o,a)),r),s}function ye(i,t){ee(i);let e=i;ss(e.ORDER,"FpLegendre");let A=(e.ORDER-K)/Nt,s=e.pow(t,A),n=e.eql(s,e.ONE),r=e.eql(s,e.ZERO),o=e.eql(s,e.neg(e.ONE));if(!n&&!r&&!o)throw new Error("invalid Legendre symbol result");return n?1:r?0:-1}function lo(i,t){if(t!==void 0&&WA(t),i<=Y)throw new Error("invalid n length: expected positive n, got "+i);if(t!==void 0&&t<1)throw new Error("invalid n length: expected positive bit length, got "+t);let e=ts(i);if(t!==void 0&&t<e)throw new Error(`invalid n length: expected nBitLength (${t}) >= bitLen(n) (${e})`);let A=t!==void 0?t:e,s=Math.ceil(A/8);return{nBitLength:A,nByteLength:s}}var Bi=new WeakMap,sA=class{constructor(t,e={}){w(this,"ORDER");w(this,"BITS");w(this,"BYTES");w(this,"isLE");w(this,"ZERO",Y);w(this,"ONE",K);w(this,"_lengths");w(this,"_mod");if(t<=K)throw new Error("invalid field: expected ORDER > 1, got "+t);let A;this.isLE=!1,e!=null&&typeof e=="object"&&(typeof e.BITS=="number"&&(A=e.BITS),typeof e.sqrt=="function"&&Object.defineProperty(this,"sqrt",{value:e.sqrt,enumerable:!0}),typeof e.isLE=="boolean"&&(this.isLE=e.isLE),e.allowedLengths&&(this._lengths=Object.freeze(e.allowedLengths.slice())),typeof e.modFromBytes=="boolean"&&(this._mod=e.modFromBytes));let{nBitLength:s,nByteLength:n}=lo(t,A);if(n>2048)throw new Error("invalid field: expected ORDER of <= 2048 bytes");this.ORDER=t,this.BITS=s,this.BYTES=n,Object.freeze(this)}create(t){return F(t,this.ORDER)}isValid(t){if(typeof t!="bigint")throw new TypeError("invalid field element: expected bigint, got "+typeof t);return Y<=t&&t<this.ORDER}is0(t){return t===Y}isValidNot0(t){return!this.is0(t)&&this.isValid(t)}isOdd(t){return(t&K)===K}neg(t){return F(-t,this.ORDER)}eql(t,e){return t===e}sqr(t){return F(t*t,this.ORDER)}add(t,e){return F(t+e,this.ORDER)}sub(t,e){return F(t-e,this.ORDER)}mul(t,e){return F(t*e,this.ORDER)}pow(t,e){return no(t,e,this.ORDER)}div(t,e){return F(t*$i(e,this.ORDER),this.ORDER)}sqrN(t){return t*t}addN(t,e){return t+e}subN(t,e){return t-e}mulN(t,e){return t*e}inv(t){return $i(t,this.ORDER)}sqrt(t){let e=Bi.get(this);return e||Bi.set(this,e=ao(this.ORDER)),e(this,t)}toBytes(t){return this.isLE?AA(t,this.BYTES):VA(t,this.BYTES)}fromBytes(t,e=!1){xt(t);let{_lengths:A,BYTES:s,isLE:n,ORDER:r,_mod:o}=this;if(A){if(t.length<1||!A.includes(t.length)||t.length>s)throw new Error("Field.fromBytes: expected "+A+" bytes, got "+t.length);let c=new Uint8Array(s);c.set(t,n?0:c.length-t.length),t=c}if(t.length!==s)throw new Error("Field.fromBytes: expected "+s+" bytes, got "+t.length);let a=n?zt(t):eA(t);if(o&&(a=F(a,r)),!e&&!this.isValid(a))throw new Error("invalid field element: outside of range 0..ORDER");return a}invertBatch(t){return iA(this,t,!0)}cmov(t,e,A){return Bt(A,"condition"),A?e:t}};function nA(i,t={}){return Object.freeze(sA.prototype),new sA(i,t)}var rs=BigInt(0),_e=BigInt(1),ho=BigInt(4),is=16,Fi=128,uo=5,Ki=2**31;function oA(i){let t=i;if(typeof t!="function")throw new TypeError('"Point" expected constructor, got type='+typeof i);$t(t.fromAffine,"Point.fromAffine"),$t(t.fromBytes,"Point.fromBytes"),$t(t.fromHex,"Point.fromHex"),Et(t.BASE,"Point.BASE"),Et(t.ZERO,"Point.ZERO"),ee(t.Fp),ee(t.Fn)}function qi(i,t){oA(i),Zi(t,i);let e=iA(i.Fp,t.map(A=>A.Z));return t.map((A,s)=>i.fromAffine(A.toAffine(e[s])))}function po(i,t,e=1){if(!Number.isSafeInteger(i)||i<e||i>t)throw new Error("invalid window size, expected ["+e+".."+t+"], got W="+i)}function fo(i,t){let e=i*(4*t+128);if(e>Ki)throw new Error("invalid window size: table would need ~"+Math.ceil(e/2**20)+" MiB, max "+Ki/2**20+" MiB")}function mo(i,t){if(i!==void 0){$t(i,"randomBytes");try{let e=i(t);if(!Xe(e)||e.length!==t)return}catch{return}return i}}function Zi(i,t){Ve(i,"points"),i.forEach((e,A)=>{if(!(e instanceof t))throw new Error("invalid point at index "+A)})}function go(i,t,e){if(!Array.isArray(i))throw new Error("array of scalars expected");i.forEach((A,s)=>{if(!(e===void 0?t.isValid(A):Tt(A)&&A<e))throw new Error("invalid scalar at index "+s)})}var ji=new WeakMap;function ns(i){return ji.get(i)||1}function yo(i,t){let e=i.double(),A=[i];for(let s=1;s<t;s++)A.push(A[s-1].add(e));return A}function _o(i,t){let e=2**t,A=e/2,s=BigInt(e-1),n=[];for(;i>rs;){let r=0;i&_e&&(r=Number(i&s),r>=A&&(r-=e),i-=BigInt(r)),n.push(r),i>>=_e}return n}function bo(i,t,e){let A=2**t,s=A/2,n=BigInt(A-1),r=BigInt(t),o=[];for(let a=0;a<e;a++){let c=Number(i&n);i>>=r,c>s&&(c-=A,i+=_e),o.push(c)}if(i!==rs)throw new Error("invalid wnaf");return o}function wo(i,t,e){let A=0;for(let n of e)A=Math.max(A,n.length);let s=i;for(let n=A-1;n>=0;n--){n!==A-1&&(s=s.double());for(let r=0;r<e.length;r++){let o=e[r][n];if(o){let a=t[r][Math.abs(o)-1>>1];s=s.add(o<0?a.negate():a)}}}return s}var rA=class{constructor(t,e){w(this,"Point");w(this,"BASE");w(this,"ZERO");w(this,"randomBytes");w(this,"wnafPrecomputes",new WeakMap);w(this,"baseCanBeBlinded");w(this,"bits");oA(t),this.randomBytes=mo(e,is),this.Point=t,this.BASE=t.BASE,this.ZERO=t.ZERO,this.bits=t.Fn.BITS}buildWnafTable(t,e,A){let s=Math.ceil(A/e)+1,n=2**(e-1),r=[],o=t;for(let a=0;a<s;a++){let c=o;for(let l=0;l<n;l++)r.push(c),c=c.add(o);o=r[r.length-1].double()}return{W:e,bits:A,windows:s,comp:r}}wnafCachedCT(t,e){let{W:A,windows:s,comp:n}=t,r=2**(A-1),o=bo(e,A,s),a=this.ZERO,c=this.BASE;for(let l=0;l<s;l++){let h=o[l],d=l*r,u=Math.abs(h)-1,p=n[d];for(let m=1;m<r;m++)p=m===u?n[d+m]:p;let f=p.negate();h===0?c=c.add(n[d]):a=a.add(h<0?f:p)}return{p:a,f:c}}getWnafPrecomputes(t,e,A,s){let n=this.wnafPrecomputes.get(e),r=n?.find(o=>o.W===t&&o.bits===A);return r||(r=this.buildWnafTable(e,t,A),typeof s=="function"&&(r={...r,comp:s(r.comp)}),n||(n=[],this.wnafPrecomputes.set(e,n)),n.push(r)),r}assertPoint(t){if(!(t instanceof this.Point))throw new TypeError('"point" expected Point instance, got type='+typeof t)}validateMulInput(t,e){if(this.assertPoint(t),!XA(e,_e,this.Point.Fn.ORDER))throw new Error("invalid scalar")}runCT(t,e,A,s){let n=ns(t);return n===1?this.fixedWindowCT(t,e,A):this.wnafCachedCT(this.getWnafPrecomputes(n,t,A,s),e)}mulCT(t,e,A){return this.validateMulInput(t,e),this.runCT(t,e,this.bits,A)}mulCTBlinded(t,e,A){if(this.validateMulInput(t,e),this.randomBytes===void 0)throw new Error("randomBytes is required for scalar blinding");let s=this.Point.Fn.BITS+Fi,n=this.randomBytes(is);if(!Xe(n)||n.length!==is)throw new Error("randomBytes returned invalid byte array");n[0]=n[0]&63|128;let r=e+eA(n)*this.Point.Fn.ORDER;return this.runCT(t,r,s,A)}fixedWindowCT(t,e,A){let s=uo,n=1<<s,r=Oi(s),o=new Array(n);o[0]=this.ZERO;for(let l=1;l<n;l++)o[l]=o[l-1].add(t);let a=Math.ceil(A/s),c=this.ZERO;for(let l=a-1;l>=0;l--){if(l!==a-1)for(let u=0;u<s;u++)c=c.double();let h=Number(e>>BigInt(l*s)&r),d=o[0];for(let u=1;u<n;u++)d=u===h?o[u]:d;c=c.add(d)}return{p:c,f:c}}shouldBlind(t,e){return this.randomBytes===void 0?!1:e===_e?!0:t!==this.BASE?!1:(this.baseCanBeBlinded===void 0&&(this.baseCanBeBlinded=this.mulUnsafe(this.BASE,this.Point.Fn.ORDER).is0()),this.baseCanBeBlinded)}mulSecret(t,e,A,s){return this.shouldBlind(t,A)?this.mulCTBlinded(t,e,s):this.mulCT(t,e,s)}mulUnsafe(t,e,A){if(this.assertPoint(t),!Tt(e))throw new Error("invalid scalar");let s=ns(t);if(s===1||e>=this.Point.Fn.ORDER)return xo(this.Point,[t],[e],!0);let n=this.getWnafPrecomputes(s,t,this.bits,A);return this.wnafCachedCT(n,e).p}setWindowSize(t,e){this.assertPoint(t),po(e,this.bits);let A=Math.ceil((this.bits+Fi)/e)+1;fo(A*2**(e-1),this.Point.Fp.BYTES),ji.set(t,e),this.wnafPrecomputes.delete(t)}hasWindowSize(t){return ns(t)!==1}};function xo(i,t,e,A=!1){if(oA(i),Zi(t,i),Bt(A,"allowOversized"),go(e,i.Fn,A?i.Fn.ORDER**ho:void 0),t.length!==e.length)throw new Error("arrays of points and scalars must have equal length");let s=t.map(r=>yo(r,4)),n=e.map(r=>_o(r,4));return wo(i.ZERO,s,n)}function Gi(i,t,e){if(t){if(t.ORDER!==i)throw new Error("Field.ORDER must match order: Fp == p, Fn == n");return ee(t),t}else return nA(i,{isLE:e})}function Yi(i,t,e={},A){if(i!=="weierstrass"&&i!=="edwards")throw new Error('expected curve type "weierstrass" or "edwards"');if(A===void 0&&(A=i==="edwards"),!t||typeof t!="object")throw new Error(`expected valid ${i} CURVE object`);Ut(e);for(let a of["p","n","h"]){let c=t[a];if(!(Tt(c)&&c!==rs))throw new Error(`CURVE.${a} must be positive bigint`)}let s=Gi(t.p,e.Fp,A),n=Gi(t.n,e.Fn,A),o=["Gx","Gy","a",i==="weierstrass"?"b":"d"];for(let a of o)if(!s.isValid(t[a]))throw new Error(`CURVE.${a} must be valid field element of CURVE.Fp`);return t=Object.freeze(Object.assign({},t)),{CURVE:t,Fp:s,Fn:n}}function os(i,t){return function(A){let s=i(A);return{secretKey:s,publicKey:t(s)}}}var aA=BigInt(0),cA=BigInt(1),lA=BigInt(2),So=BigInt(4),Wi=BigInt(8);function vo(i,t,e,A){let s=i.sqr(e),n=i.sqr(A),r=i.add(i.mul(t.a,s),n),o=i.add(i.ONE,i.mul(t.d,i.mul(s,n)));return i.eql(r,o)}function Vi(i,t={}){Ut(t,{},{},"extraOpts");let e=t,A=Yi("edwards",i,e,e.FpFnLE),{Fp:s,Fn:n}=A,r=A.CURVE,{h:o}=r;if(ye(s,r.a)!==1)throw new Error("edwards: CURVE.a must be a square in Fp for complete addition formulas");if(ye(s,r.d)!==-1)throw new Error("edwards: CURVE.d must be a non-square in Fp for complete addition formulas");Ut(e,{},{uvRatio:"function",randomBytes:"function"});let a=e.randomBytes===void 0?tA:e.randomBytes,c=lA<<BigInt(s.BYTES*8)-cA;function l(x){if(!s.isOdd)throw new Error("Field does not have .isOdd()");return s.isOdd(x)}let h=e.uvRatio===void 0?(x,b)=>{try{return{isValid:!0,value:s.sqrt(s.div(x,b))}}catch{return{isValid:!1,value:aA}}}:e.uvRatio;if(!vo(s,r,r.Gx,r.Gy))throw new Error("bad curve params: generator point");let d=s.eql(r.a,s.neg(s.ONE))?x=>s.neg(x):s.eql(r.a,s.ONE)?x=>x:x=>s.mul(r.a,x);function u(x,b,v=!1){let S=v?cA:aA;return Jt("coordinate "+x,b,S,c),b}function p(x){if(!(x instanceof f))throw new Error("EdwardsPoint expected")}let _=class _{constructor(b,v,S,O){w(this,"X");w(this,"Y");w(this,"Z");w(this,"T");this.X=u("x",b),this.Y=u("y",v),this.Z=u("z",S,!0),this.T=u("t",O),Object.freeze(this)}static CURVE(){return r}static fromAffine(b){if(b instanceof _)throw new Error("extended point not allowed");let{x:v,y:S}=b||{};return u("x",v),u("y",S),new _(v,S,s.ONE,s.mul(v,S))}static fromBytes(b,v=!1){let S=s.BYTES,{a:O,d:$}=r;b=Pt(xt(b,S,"point")),Bt(v,"zip215");let C=Pt(b),k=b[S-1];C[S-1]=k&-129;let I=zt(C),D=v?c:s.ORDER;Jt("point.y",I,aA,D);let R=s.sqr(I),B=s.sub(R,s.ONE),P=s.sub(s.mulN($,R),O),{isValid:E,value:L}=h(B,P);if(!E)throw new Error("bad point: invalid y coordinate");let z=l(L),M=(k&128)!==0;if(!v&&s.is0(L)&&M)throw new Error("bad point: x=0 and x_0=1");return M!==z&&(L=s.neg(L)),_.fromAffine({x:L,y:I})}static fromHex(b,v=!1){return _.fromBytes(Ri(b),v)}get x(){return this.toAffine().x}get y(){return this.toAffine().y}precompute(b=6,v=!0){return g.setWindowSize(this,b),v||this.multiply(lA),this}assertValidity(){let b=this,{a:v,d:S}=r;if(b.is0())throw new Error("bad point: ZERO");let{X:O,Y:$,Z:C,T:k}=b,I=s.sqr(O),D=s.sqr($),R=s.sqr(C),B=s.sqr(R),P=s.mul(I,v),E=s.mul(s.add(P,D),R),L=s.add(B,s.mul(S,s.mul(I,D)));if(!s.eql(E,L))throw new Error("bad point: equation left != right (1)");let z=s.mul(O,$),M=s.mul(C,k);if(!s.eql(z,M))throw new Error("bad point: equation left != right (2)")}equals(b){p(b);let{X:v,Y:S,Z:O}=this,{X:$,Y:C,Z:k}=b,I=s.mul(v,k),D=s.mul($,O),R=s.mul(S,k),B=s.mul(C,O);return s.eql(I,D)&&s.eql(R,B)}is0(){return this.equals(_.ZERO)}negate(){return new _(s.neg(this.X),this.Y,this.Z,s.neg(this.T))}double(){let{X:b,Y:v,Z:S}=this,O=s.sqr(b),$=s.sqr(v),C=s.mul(s.sqr(S),lA),k=d(O),I=s.addN(b,v),D=s.sub(s.subN(s.sqr(I),O),$),R=s.addN(k,$),B=s.subN(R,C),P=s.subN(k,$),E=s.mul(D,B),L=s.mul(R,P),z=s.mul(D,P),M=s.mul(B,R);return new _(E,L,M,z)}add(b){p(b);let{d:v}=r,{X:S,Y:O,Z:$,T:C}=this,{X:k,Y:I,Z:D,T:R}=b,B=s.mul(S,k),P=s.mul(O,I),E=s.mul(s.mulN(C,v),R),L=s.mul($,D),z=s.sub(s.subN(s.mulN(s.addN(S,O),s.addN(k,I)),B),P),M=s.subN(L,E),J=s.addN(L,E),U=s.sub(P,d(B)),N=s.mul(z,M),Z=s.mul(J,U),ht=s.mul(z,U),at=s.mul(M,J);return new _(N,Z,at,ht)}subtract(b){return p(b),this.add(b.negate())}multiply(b){if(!n.isValidNot0(b))throw new RangeError("invalid scalar: expected 1 <= sc < curve.n");let{p:v,f:S}=g.mulSecret(this,b,o,m);return m([v,S])[0]}multiplyUnsafe(b){if(!n.isValid(b))throw new RangeError("invalid scalar: expected 0 <= sc < curve.n");return b===aA?_.ZERO:this.is0()||b===cA?this:g.mulUnsafe(this,b,m)}isSmallOrder(){return this.clearCofactor().is0()}isTorsionFree(){return g.mulUnsafe(this,r.n).is0()}toAffine(b){let v=this,S=b;if(S!=null&&typeof S!="bigint")throw new TypeError('"invertedZ" expected bigint, got type='+typeof S);let{X:O,Y:$,Z:C}=v,k=v.is0();S==null&&(S=k?s.create(Wi):s.inv(C));let I=s.mul(O,S),D=s.mul($,S),R=s.mul(C,S);if(k)return{x:s.ZERO,y:s.ONE};if(!s.eql(R,s.ONE))throw new Error("invZ was invalid");return{x:I,y:D}}clearCofactor(){return o===cA?this:o===lA?this.double():o===So?this.double().double():o===Wi?this.double().double().double():this.multiplyUnsafe(o)}toBytes(){let{x:b,y:v}=this.toAffine(),S=s.toBytes(v);return S[S.length-1]|=l(b)?128:0,S}toHex(){return Ii(this.toBytes())}toString(){return`<Point ${this.is0()?"ZERO":this.toHex()}>`}};w(_,"BASE",new _(r.Gx,r.Gy,s.ONE,s.mul(r.Gx,r.Gy))),w(_,"ZERO",new _(s.ZERO,s.ONE,s.ONE,s.ZERO)),w(_,"Fp",s),w(_,"Fn",n);let f=_,m=x=>qi(f,x),g=new rA(f,a);return g.bits>=6&&f.BASE.precompute(6),Object.freeze(f.prototype),Object.freeze(f),f}var Ht=BigInt(0),ot=BigInt(1),dA=BigInt(2);function Xi(i,t){return i+t-(t>>ot<<ot)}function Mo(i){let t=BigInt(6)*i;return(e,A,s)=>{let n=A+s,o=((t+s-A)*e+A)%i;return{x_2:o,x_3:n-o}}}function ko(i){return Ut(i,{P:"bigint",type:"string",adjustScalarBytes:"function",powPminus2:"function"},{randomBytes:"function",scalarMultBase:"function"}),Object.freeze({...i})}function tn(i){let t=ko(i),{P:e,type:A,adjustScalarBytes:s,powPminus2:n,randomBytes:r}=t,o=t.scalarMultBase,a=A==="x25519";if(!a&&A!=="x448")throw new Error("invalid type");let c=r===void 0?tA:r,l=a?255:448,h=Mo(e),d=a?32:56,u=BigInt(a?9:5),p=BigInt(a?121665:39081),f=a?dA**BigInt(254):dA**BigInt(447),m=a?BigInt(8)*(dA**BigInt(251)-ot):BigInt(4)*(dA**BigInt(445)-ot),g=f+m+ot,_=E=>F(E,e),x=b(u);function b(E){return AA(_(E),d)}function v(E){let L=Pt(xt(E,d,"uCoordinate"));return a&&(L[31]&=127),_(zt(L))}function S(E){return zt(s(Pt(xt(E,d,"scalar"))))}let O=new Set(a?[Ht,ot,e-ot,BigInt("325606250916557431795983626356110631294008115727848805560023387167927233504"),BigInt("39382357235489614581723060781553021112529911719440698176882885853963445705823")]:[Ht,ot,e-ot]);function $(E,L){let z=v(L);if(O.has(z))throw new Error("invalid private or public key received");let M=D(z,S(E));if(M===Ht)throw new Error("invalid private or public key received");return b(M)}function C(E){if(o===void 0)return $(E,x);let L=S(E);Jt("scalar",L,f,g);let z=_(o(L));if(z===Ht)throw new Error("invalid private or public key received");return b(z)}let k=C,I=$;function D(E,L){Jt("u",E,Ht,e),Jt("scalar",L,f,g);let z=L,M=E,J=ot,U=Ht,N=E,Z=ot,ht=z^z>>ot;for(let ut=BigInt(l-1);ut>=Ht;ut--){let bt=Xi(e,ht>>ut);({x_2:J,x_3:N}=h(bt,J,N)),{x_2:U,x_3:Z}=h(bt,U,Z);let pt=J+U,JA=_(pt*pt),UA=J-U,Ws=_(UA*UA),Vs=JA-Ws,Or=N+Z,$r=N-Z,Xs=_($r*pt),ti=_(Or*UA),ei=Xs+ti,Ai=Xs-ti;N=_(ei*ei),Z=_(M*_(Ai*Ai)),J=_(JA*Ws),U=_(Vs*(JA+_(p*Vs)))}let at=Xi(e,z);({x_2:J,x_3:N}=h(at,J,N)),{x_2:U,x_3:Z}=h(at,U,Z);let vt=n(U);return _(J*vt)}let R={secretKey:d,publicKey:d,seed:d},B=E=>(E=E===void 0?c(d):E,xt(E,R.seed,"seed"),E),P={randomSecretKey:B};return Object.freeze(R),Object.freeze(P),Object.freeze({keygen:os(B,k),getSharedSecret:I,getPublicKey:k,scalarMult:$,scalarMultBase:C,utils:P,GuBytes:x.slice(),lengths:R})}var en=BigInt(0),Co=BigInt(1),An=BigInt(2),Eo=BigInt(3),To=BigInt(5),Do=BigInt(8),hA=BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"),Io={p:hA,n:BigInt("0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"),h:Do,a:BigInt("0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"),d:BigInt("0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"),Gx:BigInt("0x216936d3cd6e53fec0a4e231fdd6dc5c692cc7609525a7b2c9562d608f25d51a"),Gy:BigInt("0x6666666666666666666666666666666666666666666666666666666666666658")};function rn(i){let t=BigInt(10),e=BigInt(20),A=BigInt(40),s=BigInt(80),n=hA,o=i*i%n*i%n,a=rt(o,An,n)*o%n,c=rt(a,Co,n)*i%n,l=rt(c,To,n)*c%n,h=rt(l,t,n)*l%n,d=rt(h,e,n)*h%n,u=rt(d,A,n)*d%n,p=rt(u,s,n)*u%n,f=rt(p,s,n)*u%n,m=rt(f,t,n)*l%n;return{pow_p_5_8:rt(m,An,n)*i%n,b2:o}}function Ro(i){return i[0]&=248,i[31]&=127,i[31]|=64,i}var sn=BigInt("19681161376707505956807079304988542015446066515923890162744021073123829784752");function Lo(i,t){let e=hA,A=F(t*t*t,e),s=F(A*A*t,e),n=rn(i*s).pow_p_5_8,r=F(i*A*n,e),o=F(t*r*r,e),a=r,c=F(r*sn,e),l=o===i,h=o===F(-i,e),d=o===F(-i*sn,e);return l&&(r=a),(h||d)&&(r=c),Qi(r,e)&&(r=F(-r,e)),{isValid:l||h,value:r}}var nn=Vi(Io,{uvRatio:Lo});var Qt=(()=>{let i=hA,t=e=>{let{pow_p_5_8:A,b2:s}=rn(e);return F(rt(A,Eo,i)*s,i)};return tn({P:i,type:"x25519",powPminus2:t,adjustScalarBytes:Ro,scalarMultBase:e=>{let A=F(e,nn.Fn.ORDER);if(A===en)return en;let s=nn.BASE.multiply(A);return F((s.Z+s.Y)*t(F(s.Z-s.Y,i)),i)}})})();function as(i){return i instanceof Uint8Array||ArrayBuffer.isView(i)&&i.constructor.name==="Uint8Array"&&"BYTES_PER_ELEMENT"in i&&i.BYTES_PER_ELEMENT===1}var uA=i=>i?`"${i}" `:"";function pA(i,t=""){if(typeof i!="boolean")throw new TypeError(uA(t)+"expected boolean, got type="+typeof i);return i}function Dt(i,t=""){if(typeof i!="number")throw new TypeError(uA(t)+"expected number, got "+typeof i);if(!Number.isSafeInteger(i)||i<0)throw new RangeError(uA(t)+"expected integer >= 0, got "+i);return i}function Q(i,t,e=""){if(as(i)&&(t===void 0||i.length===t))return i;t!==void 0&&Dt(t,"length");let A=as(i),s=t!==void 0?` of length ${t}`:"",n=A?`length=${i.length}`:`type=${typeof i}`,r=uA(e)+"expected Uint8Array"+s+", got "+n;throw A?new RangeError(r):new TypeError(r)}var on=(i,t)=>{if(i===null||typeof i!="object"||Array.isArray(i))throw new TypeError(t==="object"?"expected valid options object":`"${t}" expected object, got type=${typeof i}`)};function Ft(i,t=!0){if(i.destroyed)throw new Error("hash was destroyed");if(t&&i.finished)throw new Error("digest() was already called")}function cs(i,t){Q(i,void 0,"output");let e=t.outputLen;if(!(i.length>=e))throw new RangeError('"output" expected length >= '+e)}function ls(i,t){if(cs(i,t),!mt(i))throw new Error("invalid output, must be aligned")}function an(i){return new Uint8Array(i.buffer,i.byteOffset,i.byteLength)}function j(i){return new Uint32Array(i.buffer,i.byteOffset,Math.floor(i.byteLength/4))}function q(...i){for(let t=0;t<i.length;t++)i[t].fill(0)}function Ae(i){return new DataView(i.buffer,i.byteOffset,i.byteLength)}var st=new Uint8Array(new Uint32Array([287454020]).buffer)[0]===68;function ds(i){return i<<24&4278190080|i<<8&16711680|i>>>8&65280|i>>>24&255}var G=st?i=>i:i=>ds(i)>>>0;function Oo(i){for(let t=0;t<i.length;t++)i[t]=ds(i[t]);return i}var At=st?i=>i:Oo;function cn(i,t){return!i.byteLength||!t.byteLength?!1:i.buffer===t.buffer&&i.byteOffset<t.byteOffset+t.byteLength&&t.byteOffset<i.byteOffset+i.byteLength}function hs(i,t){if(cn(i,t)&&i.byteOffset<t.byteOffset)throw new Error("complex overlap of input and output is not supported")}function ln(i,t){return on(i,"defaults"),on(t,"opts"),Object.assign(i,t)}function fA(i,t){if(i=Q(i),t=Q(t),i.length!==t.length)return!1;let e=0;for(let A=0;A<i.length;A++)e|=i[A]^t[A];return e===0}function be(i,t,e){let A=t,s=e||(()=>[]),n=(o,a)=>A(a,...s(o)).update(o).digest(),r=A(new Uint8Array(i),...s(new Uint8Array(0)));return n.outputLen=r.outputLen,n.blockLen=r.blockLen,n.create=(o,...a)=>A(o,...a),n}var mA=(i,t)=>{function e(A,...s){if(Q(A,void 0,"key"),i.nonceLength!==void 0){let h=s[0];Q(h,i.varSizeNonce?void 0:i.nonceLength,"nonce")}let n=i.tagLength,r=i.nonceLength!==void 0?1:0;if(!i.withAAD){for(let h=r;h<s.length;h++)if(as(s[h]))throw new Error("AAD not supported")}i.withAAD&&s[r]!==void 0&&Q(s[r],void 0,"AAD");let o=t(A,...s),a=(h,d)=>{if(d!==void 0){if(h!==2)throw new Error("cipher output not supported");Q(d,void 0,"output")}},c=!1;return{encrypt(h,d){if(c)throw new Error("cannot encrypt() twice with same key + nonce");return c=!0,Q(h,void 0,"data"),a(o.encrypt.length,d),o.encrypt(h,d)},decrypt(h,d){if(Q(h,void 0,"data"),n&&h.length<n)throw new Error('"ciphertext" expected length >= tagLength='+n);return a(o.decrypt.length,d),o.decrypt(h,d)}}}return Object.assign(e,i),e};function Kt(i,t,e=!0){if(t===void 0)return new Uint8Array(i);if(Q(t,i,"output"),e&&!mt(t))throw new Error("invalid output, must be aligned");return t}function gA(i,t,e){Dt(i),Dt(t),pA(e);let A=new Uint8Array(16),s=Ae(A);return s.setBigUint64(0,BigInt(t),e),s.setBigUint64(8,BigInt(i),e),A}function mt(i){return i.byteOffset%4===0}function it(i){return Uint8Array.from(Q(i))}var hn=i=>Uint8Array.from(i.split(""),t=>t.charCodeAt(0)),$o=At(j(hn("expand 16-byte k"))),Bo=At(j(hn("expand 32-byte k")));function H(i,t){return i<<t|i>>>32-t}var we=64,zo=16,us=2**32-1,dn=Uint32Array.of();function Po(i,t,e,A,s,n,r,o){let a=s.length,c=new Uint8Array(we),l=j(c),h=st&&mt(s)&&mt(n),d=h?j(s):dn,u=h?j(n):dn;if(!st){for(let p=0;p<a;r++){if(i(t,e,A,l,r,o),At(l),r>=us)throw new Error("arx: counter overflow");let f=Math.min(we,a-p);for(let m=0,g;m<f;m++)g=p+m,n[g]=s[g]^c[m];p+=f}return}for(let p=0;p<a;r++){if(i(t,e,A,l,r,o),r>=us)throw new Error("arx: counter overflow");let f=Math.min(we,a-p);if(h&&f===we){let m=p/4;if(p%4!==0)throw new Error("arx: invalid block position");for(let g=0,_;g<zo;g++)_=m+g,u[_]=d[_]^l[g];p+=we;continue}for(let m=0,g;m<f;m++)g=p+m,n[g]=s[g]^c[m];p+=f}}function un(i,t){let{allowShortKeys:e,extendNonceFn:A,counterLength:s,counterRight:n,rounds:r}=ln({allowShortKeys:!1,counterLength:8,counterRight:!1,rounds:20},t);if(typeof i!="function")throw new Error("core must be a function");return Dt(s),Dt(r),pA(n),pA(e),(o,a,c,l,h=0)=>{Q(o,void 0,"key"),Q(a,void 0,"nonce"),Q(c,void 0,"data");let d=c.length,u=l!==void 0;if(l=Kt(d,l,!1),u&&hs(c,l),Dt(h),h<0||h>=us)throw new Error("arx: counter overflow");let p=[],f=o.length,m,g;if(f===32)p.push(m=it(o)),g=Bo;else if(f===16&&e)m=new Uint8Array(32),m.set(o),m.set(o,16),g=$o,p.push(m);else throw Q(o,32,"arx key"),new Error("invalid key size");(!st||!mt(a))&&p.push(a=it(a));let _=j(m);if(A){if(a.length!==24)throw new Error("arx: extended nonce must be 24 bytes");let v=a.subarray(0,16);if(st)A(g,_,j(v),_);else{let S=At(Uint32Array.from(g));A(S,_,j(v),_),q(S),At(_)}a=a.subarray(16)}else st||At(_);let x=16-s;if(x!==a.length)throw new Error(`arx: nonce must be ${x} or 16 bytes`);if(x!==12){let v=new Uint8Array(12);v.set(a,n?0:12-a.length),a=v,p.push(a)}let b=At(j(a));try{return Po(i,g,_,b,c,l,h,r),l}finally{q(...p)}}}function V(i,t){return i[t++]&255|(i[t++]&255)<<8}var ps=class{constructor(t){w(this,"blockLen",16);w(this,"outputLen",16);w(this,"buffer",new Uint8Array(16));w(this,"r",new Uint16Array(10));w(this,"h",new Uint16Array(10));w(this,"pad",new Uint16Array(8));w(this,"pos",0);w(this,"finished",!1);w(this,"destroyed",!1);t=it(Q(t,32,"key"));let e=V(t,0),A=V(t,2),s=V(t,4),n=V(t,6),r=V(t,8),o=V(t,10),a=V(t,12),c=V(t,14);this.r[0]=e&8191,this.r[1]=(e>>>13|A<<3)&8191,this.r[2]=(A>>>10|s<<6)&7939,this.r[3]=(s>>>7|n<<9)&8191,this.r[4]=(n>>>4|r<<12)&255,this.r[5]=r>>>1&8190,this.r[6]=(r>>>14|o<<2)&8191,this.r[7]=(o>>>11|a<<5)&8065,this.r[8]=(a>>>8|c<<8)&8191,this.r[9]=c>>>5&127;for(let l=0;l<8;l++)this.pad[l]=V(t,16+2*l)}process(t,e,A=!1){let s=A?0:2048,{h:n,r}=this,o=r[0],a=r[1],c=r[2],l=r[3],h=r[4],d=r[5],u=r[6],p=r[7],f=r[8],m=r[9],g=V(t,e+0),_=V(t,e+2),x=V(t,e+4),b=V(t,e+6),v=V(t,e+8),S=V(t,e+10),O=V(t,e+12),$=V(t,e+14),C=n[0]+(g&8191),k=n[1]+((g>>>13|_<<3)&8191),I=n[2]+((_>>>10|x<<6)&8191),D=n[3]+((x>>>7|b<<9)&8191),R=n[4]+((b>>>4|v<<12)&8191),B=n[5]+(v>>>1&8191),P=n[6]+((v>>>14|S<<2)&8191),E=n[7]+((S>>>11|O<<5)&8191),L=n[8]+((O>>>8|$<<8)&8191),z=n[9]+($>>>5|s),M=0,J=M+C*o+k*(5*m)+I*(5*f)+D*(5*p)+R*(5*u);M=J>>>13,J&=8191,J+=B*(5*d)+P*(5*h)+E*(5*l)+L*(5*c)+z*(5*a),M+=J>>>13,J&=8191;let U=M+C*a+k*o+I*(5*m)+D*(5*f)+R*(5*p);M=U>>>13,U&=8191,U+=B*(5*u)+P*(5*d)+E*(5*h)+L*(5*l)+z*(5*c),M+=U>>>13,U&=8191;let N=M+C*c+k*a+I*o+D*(5*m)+R*(5*f);M=N>>>13,N&=8191,N+=B*(5*p)+P*(5*u)+E*(5*d)+L*(5*h)+z*(5*l),M+=N>>>13,N&=8191;let Z=M+C*l+k*c+I*a+D*o+R*(5*m);M=Z>>>13,Z&=8191,Z+=B*(5*f)+P*(5*p)+E*(5*u)+L*(5*d)+z*(5*h),M+=Z>>>13,Z&=8191;let ht=M+C*h+k*l+I*c+D*a+R*o;M=ht>>>13,ht&=8191,ht+=B*(5*m)+P*(5*f)+E*(5*p)+L*(5*u)+z*(5*d),M+=ht>>>13,ht&=8191;let at=M+C*d+k*h+I*l+D*c+R*a;M=at>>>13,at&=8191,at+=B*o+P*(5*m)+E*(5*f)+L*(5*p)+z*(5*u),M+=at>>>13,at&=8191;let vt=M+C*u+k*d+I*h+D*l+R*c;M=vt>>>13,vt&=8191,vt+=B*a+P*o+E*(5*m)+L*(5*f)+z*(5*p),M+=vt>>>13,vt&=8191;let ut=M+C*p+k*u+I*d+D*h+R*l;M=ut>>>13,ut&=8191,ut+=B*c+P*a+E*o+L*(5*m)+z*(5*f),M+=ut>>>13,ut&=8191;let bt=M+C*f+k*p+I*u+D*d+R*h;M=bt>>>13,bt&=8191,bt+=B*l+P*c+E*a+L*o+z*(5*m),M+=bt>>>13,bt&=8191;let pt=M+C*m+k*f+I*p+D*u+R*d;M=pt>>>13,pt&=8191,pt+=B*h+P*l+E*c+L*a+z*o,M+=pt>>>13,pt&=8191,M=(M<<2)+M|0,M=M+J|0,J=M&8191,M=M>>>13,U+=M,n[0]=J,n[1]=U,n[2]=N,n[3]=Z,n[4]=ht,n[5]=at,n[6]=vt,n[7]=ut,n[8]=bt,n[9]=pt}finalize(){let{h:t,pad:e}=this,A=new Uint16Array(10),s=t[1]>>>13;t[1]&=8191;for(let o=2;o<10;o++)t[o]+=s,s=t[o]>>>13,t[o]&=8191;t[0]+=s*5,s=t[0]>>>13,t[0]&=8191,t[1]+=s,s=t[1]>>>13,t[1]&=8191,t[2]+=s,A[0]=t[0]+5,s=A[0]>>>13,A[0]&=8191;for(let o=1;o<10;o++)A[o]=t[o]+s,s=A[o]>>>13,A[o]&=8191;A[9]-=8192;let n=(s^1)-1;for(let o=0;o<10;o++)A[o]&=n;n=~n;for(let o=0;o<10;o++)t[o]=t[o]&n|A[o];t[0]=(t[0]|t[1]<<13)&65535,t[1]=(t[1]>>>3|t[2]<<10)&65535,t[2]=(t[2]>>>6|t[3]<<7)&65535,t[3]=(t[3]>>>9|t[4]<<4)&65535,t[4]=(t[4]>>>12|t[5]<<1|t[6]<<14)&65535,t[5]=(t[6]>>>2|t[7]<<11)&65535,t[6]=(t[7]>>>5|t[8]<<8)&65535,t[7]=(t[8]>>>8|t[9]<<5)&65535;let r=t[0]+e[0];t[0]=r&65535;for(let o=1;o<8;o++)r=(t[o]+e[o]|0)+(r>>>16)|0,t[o]=r&65535;q(A)}update(t){Ft(this),Q(t),t=it(t);let{buffer:e,blockLen:A}=this,s=t.length;for(let n=0;n<s;){let r=Math.min(A-this.pos,s-n);if(r===A){for(;A<=s-n;n+=A)this.process(t,n);continue}e.set(t.subarray(n,n+r),this.pos),this.pos+=r,n+=r,this.pos===A&&(this.process(e,0,!1),this.pos=0)}return this}destroy(){this.destroyed=!0,q(this.h,this.r,this.buffer,this.pad)}digestInto(t){Ft(this),cs(t,this),this.finished=!0;let{buffer:e,h:A}=this,{pos:s}=this;if(s){for(e[s++]=1;s<16;s++)e[s]=0;this.process(e,0,!0)}this.finalize();let n=0;for(let r=0;r<8;r++)t[n++]=A[r]>>>0,t[n++]=A[r]>>>8}digest(){let{buffer:t,outputLen:e}=this;this.digestInto(t);let A=t.slice(0,e);return this.destroy(),A}},pn=be(32,i=>new ps(i));function Jo(i,t,e,A,s,n=20){let r=i[0],o=i[1],a=i[2],c=i[3],l=t[0],h=t[1],d=t[2],u=t[3],p=t[4],f=t[5],m=t[6],g=t[7],_=s,x=e[0],b=e[1],v=e[2],S=r,O=o,$=a,C=c,k=l,I=h,D=d,R=u,B=p,P=f,E=m,L=g,z=_,M=x,J=b,U=v;for(let Z=0;Z<n;Z+=2)S=S+k|0,z=H(z^S,16),B=B+z|0,k=H(k^B,12),S=S+k|0,z=H(z^S,8),B=B+z|0,k=H(k^B,7),O=O+I|0,M=H(M^O,16),P=P+M|0,I=H(I^P,12),O=O+I|0,M=H(M^O,8),P=P+M|0,I=H(I^P,7),$=$+D|0,J=H(J^$,16),E=E+J|0,D=H(D^E,12),$=$+D|0,J=H(J^$,8),E=E+J|0,D=H(D^E,7),C=C+R|0,U=H(U^C,16),L=L+U|0,R=H(R^L,12),C=C+R|0,U=H(U^C,8),L=L+U|0,R=H(R^L,7),S=S+I|0,U=H(U^S,16),E=E+U|0,I=H(I^E,12),S=S+I|0,U=H(U^S,8),E=E+U|0,I=H(I^E,7),O=O+D|0,z=H(z^O,16),L=L+z|0,D=H(D^L,12),O=O+D|0,z=H(z^O,8),L=L+z|0,D=H(D^L,7),$=$+R|0,M=H(M^$,16),B=B+M|0,R=H(R^B,12),$=$+R|0,M=H(M^$,8),B=B+M|0,R=H(R^B,7),C=C+k|0,J=H(J^C,16),P=P+J|0,k=H(k^P,12),C=C+k|0,J=H(J^C,8),P=P+J|0,k=H(k^P,7);let N=0;A[N++]=r+S|0,A[N++]=o+O|0,A[N++]=a+$|0,A[N++]=c+C|0,A[N++]=l+k|0,A[N++]=h+I|0,A[N++]=d+D|0,A[N++]=u+R|0,A[N++]=p+B|0,A[N++]=f+P|0,A[N++]=m+E|0,A[N++]=g+L|0,A[N++]=_+z|0,A[N++]=x+M|0,A[N++]=b+J|0,A[N++]=v+U|0}var Uo=un(Jo,{counterRight:!1,counterLength:4,allowShortKeys:!1});var No=new Uint8Array(16),fn=(i,t)=>{i.update(t);let e=t.length%16;e&&i.update(No.subarray(e))},Ho=new Uint8Array(32);function mn(i,t,e,A,s){s!==void 0&&Q(s,void 0,"AAD");let n=i(t,e,Ho),r=gA(A.length,s?s.length:0,!0),o=pn.create(n);s&&fn(o,s),fn(o,A),o.update(r);let a=o.digest();return q(n,r),a}var Qo=i=>(t,e,A)=>({encrypt(n,r){let o=n.length;r=Kt(o+16,r,!1),r.set(n);let a=r.subarray(0,-16);i(t,e,a,a,1);let c=mn(i,t,e,a,A);return r.set(c,o),q(c),r},decrypt(n,r){r=Kt(n.length-16,r,!1);let o=n.subarray(0,-16),a=n.subarray(-16),c=mn(i,t,e,o,A);if(!fA(a,c))throw q(c),new Error("invalid tag");return r.set(n.subarray(0,-16)),i(t,e,r,r,1),q(c),r}}),fs=mA({blockSize:64,nonceLength:12,tagLength:16,withAAD:!0},Qo(Uo));var Gt=16,gn=new Uint8Array(16),xe=j(gn),Fo=225,Ko=(i,t,e,A)=>{let s=A&1;return{s3:e<<31|A>>>1,s2:t<<31|e>>>1,s1:i<<31|t>>>1,s0:i>>>1^Fo<<24&-(s&1)}},yA=i=>(i>>>0&255)<<24|(i>>>8&255)<<16|(i>>>16&255)<<8|i>>>24&255|0;var Go=i=>i>64*1024?8:i>1024?4:2,ms=class{constructor(t,e){w(this,"blockLen",Gt);w(this,"outputLen",Gt);w(this,"s0",0);w(this,"s1",0);w(this,"s2",0);w(this,"s3",0);w(this,"finished",!1);w(this,"destroyed",!1);w(this,"t");w(this,"W");w(this,"windowSize");Q(t,16,"key"),t=it(t);let A=Ae(t),s=A.getUint32(0,!1),n=A.getUint32(4,!1),r=A.getUint32(8,!1),o=A.getUint32(12,!1),a=[];for(let p=0;p<128;p++)a.push({s0:yA(s),s1:yA(n),s2:yA(r),s3:yA(o)}),{s0:s,s1:n,s2:r,s3:o}=Ko(s,n,r,o);let c=Go(e||1024);if(![1,2,4,8].includes(c))throw new Error("ghash: invalid window size, expected 2, 4 or 8");this.W=c;let h=128/c,d=this.windowSize=2**c,u=[];for(let p=0;p<h;p++)for(let f=0;f<d;f++){let m=0,g=0,_=0,x=0;for(let b=0;b<c;b++){if(!(f>>>c-b-1&1))continue;let{s0:S,s1:O,s2:$,s3:C}=a[c*p+b];m^=S,g^=O,_^=$,x^=C}u.push({s0:m,s1:g,s2:_,s3:x})}this.t=u}_updateBlock(t,e,A,s){t^=this.s0,e^=this.s1,A^=this.s2,s^=this.s3;let{W:n,t:r,windowSize:o}=this,a=0,c=0,l=0,h=0,d=(1<<n)-1,u=0;for(let p of[t,e,A,s])for(let f=0;f<4;f++){let m=p>>>8*f&255;for(let g=8/n-1;g>=0;g--){let _=m>>>n*g&d,{s0:x,s1:b,s2:v,s3:S}=r[u*o+_];a^=x,c^=b,l^=v,h^=S,u+=1}}this.s0=a,this.s1=c,this.s2=l,this.s3=h}update(t){Ft(this),Q(t),t=it(t);let e=j(t),A=Math.floor(t.length/Gt),s=t.length%Gt;for(let n=0;n<A;n++)this._updateBlock(G(e[n*4+0]),G(e[n*4+1]),G(e[n*4+2]),G(e[n*4+3]));return s&&(gn.set(t.subarray(A*Gt)),this._updateBlock(G(xe[0]),G(xe[1]),G(xe[2]),G(xe[3])),q(xe)),this}destroy(){this.destroyed=!0;let{t}=this;for(let e of t)e.s0=0,e.s1=0,e.s2=0,e.s3=0}digestInto(t){Ft(this),ls(t,this),this.finished=!0;let{s0:e,s1:A,s2:s,s3:n}=this,r=j(t);r[0]=e,r[1]=A,r[2]=s,r[3]=n,st||At(r.subarray(0,Gt/4))}digest(){let t=new Uint8Array(Gt);return this.digestInto(t),this.destroy(),t}};var gs=be(16,(i,t)=>new ms(i,t),i=>[i.length]);var _s=16,qo=4,_A=new Uint8Array(_s);var Zo=283;function jo(i){if(![16,24,32].includes(i.length))throw new Error('"aes key" expected Uint8Array of length 16/24/32, got length='+i.length)}function bs(i){return i<<1^Zo&-(i>>7)}function yn(i,t){let e=0;for(;t>0;t>>=1)e^=i&-(t&1),i=bs(i);return e}var Yo=(()=>{let i=new Uint8Array(256);for(let e=0,A=1;e<256;e++,A^=bs(A))i[e]=A;let t=new Uint8Array(256);t[0]=99;for(let e=0;e<255;e++){let A=i[255-e];A|=A<<8,t[i[e]]=(A^A>>4^A>>5^A>>6^A>>7^99)&255}return q(i),t})();var Wo=i=>i<<24|i>>>8,ys=i=>i<<8|i>>>24;function Vo(i,t){if(i.length!==256)throw new Error("wrong sbox length");let e=new Uint32Array(256).map((c,l)=>t(i[l])),A=e.map(ys),s=A.map(ys),n=s.map(ys),r=new Uint32Array(256*256),o=new Uint32Array(256*256),a=new Uint16Array(256*256);for(let c=0;c<256;c++)for(let l=0;l<256;l++){let h=c*256+l;r[h]=e[c]^A[l],o[h]=s[c]^n[l],a[h]=i[c]<<8|i[l]}return{sbox:i,sbox2:a,T0:e,T1:A,T2:s,T3:n,T01:r,T23:o}}var bn=Vo(Yo,i=>yn(i,3)<<24|i<<16|i<<8|yn(i,2));var Xo=(()=>{let i=new Uint8Array(16);for(let t=0,e=1;t<16;t++,e=bs(e))i[t]=e;return i})();function ta(i){Q(i);let t=i.length;jo(i);let{sbox2:e}=bn,A=[];(!st||!mt(i))&&A.push(i=it(i));let s=At(j(i)),n=s.length,r=a=>Se(e,a,a,a,a),o=new Uint32Array(t+28);o.set(s);for(let a=n;a<o.length;a++){let c=o[a-1];a%n===0?c=r(Wo(c))^Xo[a/n-1]:n>6&&a%n===4&&(c=r(c)),o[a]=o[a-n]^c}return q(...A),o}function bA(i,t,e,A,s,n){return i[e<<8&65280|A>>>8&255]^t[s>>>8&65280|n>>>24&255]}function Se(i,t,e,A,s){return i[t&255|e&65280]|i[A>>>16&255|s>>>16&65280]<<16}function _n(i,t,e,A,s){let{sbox2:n,T01:r,T23:o}=bn,a=0;t^=i[a++],e^=i[a++],A^=i[a++],s^=i[a++];let c=i.length/4-2;for(let p=0;p<c;p++){let f=i[a++]^bA(r,o,t,e,A,s),m=i[a++]^bA(r,o,e,A,s,t),g=i[a++]^bA(r,o,A,s,t,e),_=i[a++]^bA(r,o,s,t,e,A);t=f,e=m,A=g,s=_}let l=i[a++]^Se(n,t,e,A,s),h=i[a++]^Se(n,e,A,s,t),d=i[a++]^Se(n,A,s,t,e),u=i[a++]^Se(n,s,t,e,A);return{s0:l,s1:h,s2:d,s3:u}}function wA(i,t,e,A,s){Q(e,_s,"nonce"),Q(A),s=Kt(A.length,s);let n=e,r=j(n),o=Ae(n),a=j(A),c=j(s),l=t?0:12,h=A.length,d=o.getUint32(l,t);for(let p=0;p+4<=a.length;p+=4){let{s0:f,s1:m,s2:g,s3:_}=_n(i,G(r[0]),G(r[1]),G(r[2]),G(r[3]));c[p+0]=a[p+0]^G(f),c[p+1]=a[p+1]^G(m),c[p+2]=a[p+2]^G(g),c[p+3]=a[p+3]^G(_),d=d+1>>>0,o.setUint32(l,d,t)}let u=_s*Math.floor(a.length/qo);if(u<h){let{s0:p,s1:f,s2:m,s3:g}=_n(i,G(r[0]),G(r[1]),G(r[2]),G(r[3])),_=new Uint32Array([p,f,m,g]);At(_);let x=an(_);for(let b=u,v=0;b<h;b++,v++)s[b]=A[b]^x[v];q(_)}return s}function ea(i,t,e,A,s){let n=s?s.length:0,r=i.create(e,A.length+n);s&&r.update(s);let o=gA(8*A.length,8*n,t);r.update(A),r.update(o);let a=r.digest();return q(o),a}var ws=mA({blockSize:16,nonceLength:12,tagLength:16,withAAD:!0,varSizeNonce:!0},function(t,e,A){if(e.length<8)throw new Error("aes/gcm: invalid nonce length");let s=16;function n(o,a,c){let l=ea(gs,!1,o,c,A);for(let h=0;h<a.length;h++)l[h]^=a[h];return l}function r(){let o=ta(t),a=_A.slice(),c=_A.slice();if(wA(o,!1,c,c,a),e.length===12)c.set(e);else{let h=_A.slice();Ae(h).setBigUint64(8,BigInt(e.length*8),!1);let u=gs.create(a).update(e).update(h);u.digestInto(c),u.destroy()}let l=wA(o,!1,c,_A);return{xk:o,authKey:a,counter:c,tagMask:l}}return{encrypt(o){let{xk:a,authKey:c,counter:l,tagMask:h}=r(),d=new Uint8Array(o.length+s),u=[a,c,l,h];mt(o)||u.push(o=it(o)),wA(a,!1,l,o,d.subarray(0,o.length));let p=n(c,h,d.subarray(0,d.length-s));return u.push(p),d.set(p,o.length),q(...u),d},decrypt(o){let{xk:a,authKey:c,counter:l,tagMask:h}=r(),d=[a,c,h,l];mt(o)||d.push(o=it(o));let u=o.subarray(0,-s),p=o.subarray(-s),f=n(c,h,u);if(d.push(f),!fA(f,p))throw q(...d),new Error("aes-gcm: invalid tag");let m=wA(a,!1,l,u);return q(...d),m}}});var xs=new Uint8Array(12),kn=new DataView(xs.buffer);function wn(i){return kn.setBigUint64(4,i,!0),xs}function xn(i){return kn.setBigUint64(4,i,!1),xs}var Sn=(i,t)=>Qt.getSharedSecret(i,t),vn=i=>Qt.getPublicKey(i),Mn=()=>{let i=Qt.utils.randomSecretKey();return{privateKey:i,publicKey:Qt.getPublicKey(i)}},se={chacha:{name:"ChaChaPoly",dhLen:32,dh:Sn,generateKeypair:Mn,publicKey:vn,hash:tt,aeadEncrypt:(i,t,e,A)=>fs(i,wn(t),e).encrypt(A),aeadDecrypt:(i,t,e,A)=>fs(i,wn(t),e).decrypt(A)},aesgcm:{name:"AESGCM",dhLen:32,dh:Sn,generateKeypair:Mn,publicKey:vn,hash:tt,aeadEncrypt:(i,t,e,A)=>ws(i,xn(t),e).encrypt(A),aeadDecrypt:(i,t,e,A)=>ws(i,xn(t),e).decrypt(A)}},Cn={chacha:"25519_ChaChaPoly_SHA256",aesgcm:"25519_AESGCM_SHA256"};function W(i){let t="";for(let e=0;e<i.length;e++)t+=String.fromCharCode(i[e]);return btoa(t).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}function et(i){let t=i.replace(/-/g,"+").replace(/_/g,"/"),e=atob(t),A=new Uint8Array(e.length);for(let s=0;s<e.length;s++)A[s]=e.charCodeAt(s);return A}var En="sendspin-identity-sk",ve=class i{constructor(t,e){this.privateKey=t,this.publicKey=e,this.clientId=W(e)}get keypair(){return{privateKey:this.privateKey,publicKey:this.publicKey}}static loadOrCreate(t){let e=se.chacha;if(t){let s=t.getItem(En);if(s)try{let r=et(s);return new i(r,e.publicKey(r))}catch{console.warn("Sendspin: stored identity key is invalid, generating a new one")}let n=e.generateKeypair();return t.setItem(En,W(n.privateKey)),new i(n.privateKey,n.publicKey)}let A=e.generateKeypair();return new i(A.privateKey,A.publicKey)}};var Tn=new TextEncoder,xA=tt(Tn.encode("sendspin-sentinel-psk-v1")),Ss=Tn.encode("sendspin-psk-id-v1");function qt(i){let t=new Uint8Array(Ss.length+i.length);return t.set(Ss,0),t.set(i,Ss.length),W(tt(t))}var Dn=qt(xA);function In(){return crypto.getRandomValues(new Uint8Array(32))}var vs="sendspin-psks",Ms="sendspin-pairing-psk",Me=class{constructor(t){this.storage=t,this.entries=new Map,this.add({psk:xA,pskId:qt(xA),category:"sentinel"}),this.loadPersisted()}add(t){this.entries.set(t.pskId,t)}loadPersisted(){if(!this.storage)return;let t=this.storage.getItem(vs);if(t)try{let A=JSON.parse(t);for(let s of A){if(!s.serverId)continue;let n=et(s.psk);this.add({psk:n,pskId:qt(n),category:"long_term",serverId:s.serverId})}}catch{this.storage.setItem(vs,"[]")}let e=this.storage.getItem(Ms);if(e)try{let A=et(e);this.add({psk:A,pskId:qt(A),category:"pairing"})}catch{this.storage.setItem(Ms,"")}}persistLongTerm(){if(!this.storage)return;let t=[];for(let e of this.entries.values())e.category==="long_term"&&t.push({psk:W(e.psk),serverId:e.serverId});this.storage.setItem(vs,JSON.stringify(t))}lookup(t){return this.entries.get(t)??null}addLongTerm(t,e){let A={psk:t,pskId:qt(t),category:"long_term",serverId:e};return this.add(A),this.persistLongTerm(),A}replaceLongTerm(t,e){for(let[A,s]of this.entries)s.category==="long_term"&&s.serverId===e&&this.entries.delete(A);return this.addLongTerm(t,e)}removeByPskId(t){let e=this.entries.get(t);!e||e.category!=="long_term"||(this.entries.delete(t),this.persistLongTerm())}getOrCreatePairingPsk(){for(let t of this.entries.values())if(t.category==="pairing")return t.psk;return this.setPairingPsk(In())}rotatePairingPsk(){for(let[t,e]of this.entries)e.category==="pairing"&&this.entries.delete(t);return this.setPairingPsk(In())}setPairingPsk(t){return this.add({psk:t,pskId:qt(t),category:"pairing"}),this.storage?.setItem(Ms,W(t)),t}};var SA=class{constructor(t,e){w(this,"oHash");w(this,"iHash");w(this,"blockLen");w(this,"outputLen");w(this,"canXOF",!1);w(this,"finished",!1);w(this,"destroyed",!1);if(xi(t),wt(e,void 0,"key"),this.iHash=t.create(),typeof this.iHash.update!="function")throw new Error("expected Hash instance");this.blockLen=this.iHash.blockLen,this.outputLen=this.iHash.outputLen;let A=this.blockLen,s=new Uint8Array(A);s.set(e.length>A?t.create().update(e).digest():e);for(let n=0;n<s.length;n++)s[n]^=54;this.iHash.update(s),this.oHash=t.create();for(let n=0;n<s.length;n++)s[n]^=106;this.oHash.update(s),Ot(s)}update(t){return te(this),this.iHash.update(t),this}digestInto(t){te(this),Ze(t,this),this.finished=!0;let e=t.subarray(0,this.outputLen);this.iHash.digestInto(e),this.oHash.update(e),this.oHash.digestInto(e),this.destroy()}digest(){let t=new Uint8Array(this.oHash.outputLen);return this.digestInto(t),t}_cloneInto(t){t||(t=Object.create(Object.getPrototypeOf(this),{}));let{oHash:e,iHash:A,finished:s,destroyed:n,blockLen:r,outputLen:o,canXOF:a}=this;return t=t,t.finished=s,t.destroyed=n,t.blockLen=r,t.outputLen=o,t.canXOF=a,t.oHash=e._cloneInto(t.oHash),t.iHash=A._cloneInto(t.iHash),t}clone(){return this._cloneInto()}destroy(){this.destroyed=!0,this.oHash.destroy(),this.iHash.destroy()}},Zt=(()=>{let i=((t,e,A)=>new SA(t,e).update(A).digest());return i.create=(t,e)=>new SA(t,e),i})();var Rn=new Uint8Array(0),ie=class{constructor(t){this.suite=t,this.k=null,this.n=0n}initializeKey(t){this.k=t,this.n=0n}hasKey(){return this.k!==null}encryptWithAd(t,e){if(this.k===null)return e;let A=this.suite.aeadEncrypt(this.k,this.n,t,e);return this.n+=1n,A}decryptWithAd(t,e){if(this.k===null)return e;let A=this.suite.aeadDecrypt(this.k,this.n,t,e);return this.n+=1n,A}};var Ln=32;function ks(i,t,e){let A=Zt(tt,i,t),s=Zt(tt,A,Uint8Array.of(1)),n=Zt(tt,A,Cs(s,Uint8Array.of(2)));if(e===2)return[s,n];let r=Zt(tt,A,Cs(n,Uint8Array.of(3)));return[s,n,r]}function Cs(...i){let t=i.reduce((s,n)=>s+n.length,0),e=new Uint8Array(t),A=0;for(let s of i)e.set(s,A),A+=s.length;return e}var vA=class{constructor(t){this.suite=t,this.cipher=new ie(t)}initialize(t){let e=new TextEncoder().encode(t);if(e.length<=Ln){let A=new Uint8Array(Ln);A.set(e),this.h=A}else this.h=this.suite.hash(e);this.ck=this.h,this.cipher.initializeKey(null)}mixHash(t){this.h=this.suite.hash(Cs(this.h,t))}mixKey(t){let[e,A]=ks(this.ck,t,2);this.ck=e,this.cipher.initializeKey(A.slice(0,32))}mixKeyAndHash(t){let[e,A,s]=ks(this.ck,t,3);this.ck=e,this.mixHash(A),this.cipher.initializeKey(s.slice(0,32))}encryptAndHash(t){let e=this.cipher.encryptWithAd(this.h,t);return this.mixHash(e),e}decryptAndHash(t){let e=this.cipher.decryptWithAd(this.h,t);return this.mixHash(t),e}split(){let[t,e]=ks(this.ck,Rn,2),A=new ie(this.suite),s=new ie(this.suite);return A.initializeKey(t.slice(0,32)),s.initializeKey(e.slice(0,32)),[A,s]}};var Ts=["e","es","ss"],Ds=["e","ee","se","psk"];function Es(i,t){let e=new Uint8Array(i.length+t.length);return e.set(i,0),e.set(t,i.length),e}var ke=class{constructor(t){this.suite=t.suite,this.role=t.role,this.s=t.s,this.rs=t.rs,this.psk=t.psk,this.fixedEphemeral=t.fixedEphemeral,this.sym=new vA(t.suite),this.sym.initialize(`Noise_KKpsk2_25519_${t.suite.name}_SHA256`),this.sym.mixHash(t.prologue);let e=t.role==="initiator"?t.s.publicKey:t.rs,A=t.role==="responder"?t.s.publicKey:t.rs;this.sym.mixHash(e),this.sym.mixHash(A)}get handshakeHash(){return this.sym.h}setPsk(t){this.psk=t}dhToken(t){let e=this.role==="initiator";switch(t){case"ee":return this.suite.dh(this.e.privateKey,this.re);case"ss":return this.suite.dh(this.s.privateKey,this.rs);case"es":return e?this.suite.dh(this.e.privateKey,this.rs):this.suite.dh(this.s.privateKey,this.re);case"se":return e?this.suite.dh(this.s.privateKey,this.re):this.suite.dh(this.e.privateKey,this.rs)}}processTokenWrite(t,e){t==="e"?(this.e=this.fixedEphemeral??this.suite.generateKeypair(),this.sym.mixHash(this.e.publicKey),this.sym.mixKey(this.e.publicKey),e.buf=Es(e.buf,this.e.publicKey)):t==="s"?e.buf=Es(e.buf,this.sym.encryptAndHash(this.s.publicKey)):t==="psk"?this.sym.mixKeyAndHash(this.psk):this.sym.mixKey(this.dhToken(t))}processTokenRead(t,e){if(t==="e")this.re=e.buf.slice(0,this.suite.dhLen),e.buf=e.buf.slice(this.suite.dhLen),this.sym.mixHash(this.re),this.sym.mixKey(this.re);else if(t==="s"){let A=this.suite.dhLen+16;this.sym.decryptAndHash(e.buf.slice(0,A)),e.buf=e.buf.slice(A)}else t==="psk"?this.sym.mixKeyAndHash(this.psk):this.sym.mixKey(this.dhToken(t))}writeMessage(t,e){let A={buf:new Uint8Array(0)};for(let s of t)this.processTokenWrite(s,A);return A.buf=Es(A.buf,this.sym.encryptAndHash(e)),A.buf}readMessage(t,e){let A={buf:e};for(let s of t)this.processTokenRead(s,A);return this.sym.decryptAndHash(A.buf)}split(){return this.sym.split()}};var On=new Uint8Array(0),Ce=class{constructor(t,e){let[A,s]=e;t==="initiator"?(this.sendCs=A,this.recvCs=s):(this.sendCs=s,this.recvCs=A)}encrypt(t){return this.sendCs.encryptWithAd(On,t)}decrypt(t){return this.recvCs.decryptWithAd(On,t)}};function $n(i,t,e){return t.some(A=>A!=="playback"&&A!=="pairing")?!1:i==="long_term"?!t.includes("pairing"):e||!t.includes("playback")}function Rs(i,t,e){return $n(i,[...t,"playback"],e)}function Is(i,t,e,A){return $n(i,t,A)?e.length===0||Rs(i,t,A):!1}function Aa(i,t){return i.includes("pairing")?t?.method?t.method==="dynamic_pairing_code"&&typeof t.format!="string":!0:!1}function sa(i,t,e,A){if(!t.includes("pairing"))return!0;let{method:s,format:n}=e;return s==="pairing_psk"!=(i==="pairing")||!Object.keys(A).includes(s)?!1:s!=="dynamic_pairing_code"||A.dynamic_pairing_code.formats.includes(n)}function Bn(i,t,e,A,s,n,r){if(Aa(t,n))return{ok:!1,protocolError:!0};let o=e??(Rs(i,t,s)?A:[]),a=sa(i,t,n,r);return a&&Is(i,t,o,s)?{ok:!0,activeRoles:[...o]}:i!=="long_term"&&!s&&a&&Is(i,t,o,!0)?{ok:!1,goodbye:"pairing_required"}:Is(i,t,o,s)?{ok:!1,pairAbort:"method_not_supported",activeRoles:Rs(i,[],s)?[...A]:[]}:{ok:!1,goodbye:"unauthorized"}}var ne=new TextEncoder,zn=new TextDecoder,ia=new TextDecoder("utf-8",{fatal:!0}),na=3e4,Os=65519,ra=Os+16,oa=4*1024*1024,MA=1,Pn=1,Jn=2,aa=252,ca=new Map([["lt","long_term"],["pr","pairing"],["sn","sentinel"]]);function la(i){let{psk_id:t,psk_category:e}=JSON.parse(ia.decode(i))??{},A=ca.get(e);if(typeof t!="string"||!/^[A-Za-z0-9_-]{43}$/.test(t)||A===void 0)throw new Error("Sendspin: malformed noise/handshake payload");return{pskId:t,category:A}}function Ls(i,t){let e=new Uint8Array(i.length+t.length);return e.set(i,0),e.set(t,i.length),e}var kA=class{constructor(t,e,A){this.wsManager=t,this.deps=e,this.cb=A,this.state="idle",this.hs=null,this.session=null,this.matched=null,this.serverId="",this.rawClientInit=new Uint8Array(0),this.rawServerInit=new Uint8Array(0),this.timeout=null,this.frag=null,this.lastHandshakeHash=new Uint8Array(0),this.quiesced=!1,this.outboundQueue=[],this.activeRoles=[]}get suite(){return se[this.deps.suiteId]}get ready(){return this.state==="transport"}get handshakeInfo(){return this.matched?{category:this.matched.category,serverId:this.serverId,entry:this.matched}:null}get handshakeHash(){return this.lastHandshakeHash}start(){this.resetSession();let t=JSON.stringify({type:"client/init",payload:{client_id:this.deps.identity.clientId,version:1,suite:Cn[this.deps.suiteId]}});this.rawClientInit=ne.encode(t),this.wsManager.sendText(t),this.state="await_server_init",this.armTimeout()}resetSession(){this.hs=null,this.session=null,this.matched=null,this.frag=null,this.serverId="",this.rawServerInit=new Uint8Array(0),this.quiesced=!1,this.outboundQueue=[],this.lastHandshakeHash=new Uint8Array(0),this.activeRoles=[]}onSocketClosed(){this.clearTimeout(),this.resetSession(),this.state="idle"}close(){this.clearTimeout(),this.wsManager.disconnect()}handleRaw(t){let e=Math.floor(performance.now()*1e3);if(this.state==="transport"){if(typeof t.data=="string")return this.fail();let A;try{let s=new Uint8Array(t.data);if(s.length>ra)return this.fail();A=this.session.decrypt(s)}catch{return this.fail()}if(A.length<1)return this.fail();try{this.dispatchPlain(A,e)}catch(s){console.warn("Sendspin: dropped malformed transport message",s)}return}try{if(typeof t.data!="string")return this.fail();this.handleHandshakeText(t.data)}catch{this.fail()}}handleHandshakeText(t){let e=JSON.parse(t);if(this.state==="await_server_init"&&e.type==="server/error")return console.error(`Sendspin: Server refused the connection (reason: ${String(e.payload?.reason)})`),this.fail();if(this.state==="await_server_init"&&e.type==="server/init"){if(e.payload.version!==1)return this.fail();this.serverId=String(e.payload.server_id),this.rawServerInit=ne.encode(t),this.hs=new ke({suite:this.suite,role:"responder",prologue:Ls(this.rawClientInit,this.rawServerInit),s:this.deps.identity.keypair,rs:et(this.serverId)}),this.state="await_noise1",this.armTimeout();return}if(this.state==="await_noise1"&&e.type==="noise/handshake"){this.processNoise1(et(String(e.payload.data)));return}this.fail()}processNoise1(t){let e=this.hs.readMessage(Ts,t),A=this.matchPsk(e)??this.deps.pskStore.lookup(Dn);this.hs.setPsk(A.psk);let s=this.hs.writeMessage(Ds,ne.encode("{}"));this.wsManager.sendText(JSON.stringify({type:"noise/handshake",payload:{data:W(s)}})),this.session=new Ce("responder",this.hs.split()),this.matched=A,this.state="transport",this.clearTimeout(),this.lastHandshakeHash=this.hs.handshakeHash,this.cb.onHandshakeComplete(this.handshakeInfo)}matchPsk(t){let{pskId:e,category:A}=la(t),s=this.deps.pskStore.lookup(e);if(s?.category!==A)return null;if(A==="long_term"&&s.serverId!==this.serverId)throw new Error("Sendspin: long-term PSK bound to another server");return s}dispatchPlain(t,e){let A=t[0];if(A===MA)return this.handleFragment(t,e);if(this.frag!==null)return this.fail();A===0?this.handleControl(JSON.parse(zn.decode(t.subarray(1))),e):this.cb.onBinaryMessage(t,e)}handleFragment(t,e){if(t.length<2)return this.fail();let A=t[1];if(A&aa)return this.fail();let s;if(A&Jn){if(this.frag!==null||t.length<3)return this.fail();if(t[2]===MA)return this.fail();this.frag={origType:t[2],parts:[],size:0},s=t.subarray(3)}else{if(this.frag===null)return this.fail();s=t.subarray(2)}if(this.frag.parts.push(s),this.frag.size+=s.length,this.frag.size>oa)return this.frag=null,this.fail();if(!(A&Pn))return;let n=this.frag.origType,r=new Uint8Array(this.frag.size+1);r[0]=n;let o=1;for(let a of this.frag.parts)r.set(a,o),o+=a.length;this.frag=null,n===0?this.handleControl(JSON.parse(zn.decode(r.subarray(1))),e):this.cb.onBinaryMessage(r,e)}handleControl(t,e){if(t.type==="noise/handshake"){try{this.handleRehandshake(t)}catch{return this.fail()}this.cb.onHandshakeComplete(this.handshakeInfo);return}if(t.type==="server/activate"){this.handleActivate(t,e);return}if(t.type==="server/unpair"){this.handleUnpair();return}this.cb.onControlMessage(t,e)}handleRehandshake(t){let e=new ke({suite:this.suite,role:"responder",prologue:this.lastHandshakeHash,s:this.deps.identity.keypair,rs:et(this.serverId)}),A=e.readMessage(Ts,et(t.payload.data)),s=this.matchPsk(A);if(!s)throw new Error("Sendspin: psk_id lookup miss in a re-handshake");e.setPsk(s.psk);let n=e.writeMessage(Ds,ne.encode("{}"));this.quiesced=!0,this.armTimeout(),this.encryptSendJson({type:"noise/handshake",payload:{data:W(n)}}),this.session=new Ce("responder",e.split()),this.matched=s,this.lastHandshakeHash=e.handshakeHash}handleActivate(t,e){let A=Bn(this.matched.category,t.payload.activities,t.payload.active_roles,this.activeRoles,this.deps.unpairedAccess,t.payload.pairing,this.deps.pairMethods());if("protocolError"in A){console.warn("Sendspin: server/activate is missing its pairing method or format, so the server is non-compliant."),this.close();return}if("goodbye"in A){this.sendGoodbyeAndClose(A.goodbye);return}this.activeRoles=A.activeRoles,this.clearTimeout();let s=o=>o.role!==void 0&&this.activeRoles.includes(o.role),n=this.outboundQueue.filter(o=>o.alwaysReplay&&!s(o)),r=this.outboundQueue.filter(s);this.quiesced=!1,this.outboundQueue=[];for(let o of n)this.encryptSend(o.type,o.body);A.ok?this.cb.onControlMessage({...t,payload:{...t.payload,active_roles:this.activeRoles}},e):this.cb.onActivateRefused(this.activeRoles);for(let o of r)this.encryptSend(o.type,o.body)}handleUnpair(){this.matched?.category==="long_term"&&(this.deps.pskStore.removeByPskId(this.matched.pskId),this.sendGoodbyeAndClose("unpaired"))}sendGoodbyeAndClose(t){try{this.encryptSendJson({type:"client/goodbye",payload:{reason:t}})}catch{}this.close()}sendControl(t,e){let A=t.type;this.send(0,ne.encode(JSON.stringify(t)),e,A!=="client/hello",A==="client-stream/end")}sendBinary(t,e,A){this.send(t,e,A,!0,!1)}send(t,e,A,s,n){if(this.state!=="transport"||!this.session){console.warn("Sendspin: send before transport ready");return}if(this.quiesced&&s){this.outboundQueue.push({type:t,body:Uint8Array.from(e),role:A,alwaysReplay:n});return}this.encryptSend(t,e)}encryptSend(t,e){if(e.length<Os){let A=Ls(Uint8Array.of(t),e);this.wsManager.sendBinary(this.session.encrypt(A));return}for(let A=0;A<e.length;){let s=A===0,n=Math.min(e.length,A+Os-(s?3:2)),r=(s?Jn:0)|(n===e.length?Pn:0),o=s?Uint8Array.of(MA,r,t):Uint8Array.of(MA,r),a=Ls(o,e.subarray(A,n));this.wsManager.sendBinary(this.session.encrypt(a)),A=n}}encryptSendJson(t){this.encryptSend(0,ne.encode(JSON.stringify(t)))}armTimeout(){this.clearTimeout(),this.timeout=globalThis.setTimeout(()=>this.fail(),na)}clearTimeout(){this.timeout!==null&&(clearTimeout(this.timeout),this.timeout=null)}fail(){this.clearTimeout(),this.wsManager.disconnect()}};var gt=2n**255n-19n,$s=486662n,da=2n,CA=32,EA=32,Fn=64,Un=zs("CPace255"),ha=zs("CPace255_ISK"),ua=zs("CPaceMac"),pa=128,yt=class extends Error{};function zs(i){return new TextEncoder().encode(i)}function Te(...i){let t=new Uint8Array(i.reduce((A,s)=>A+s.length,0)),e=0;for(let A of i)t.set(A,e),e+=A.length;return t}function Bs(i){let t=i.length,e=[];for(;e.push(t<128?t:t&127|128),t>>=7,t!==0;);return Te(new Uint8Array(e),i)}function Ee(...i){return Te(...i.map(Bs))}function fa(i,t,e){let A=Math.max(0,pa-1-Bs(i).length-Bs(Un).length);return Ee(Un,i,new Uint8Array(A),t,e)}function jt(i,t){let e=i%t;return e<0n?e+t:e}function Kn(i,t,e){let A=1n,s=jt(i,e),n=t;for(;n>0n;)n&1n&&(A=A*s%e),s=s*s%e,n>>=1n;return A}function Nn(i,t){return Kn(i,t-2n,t)}function ma(i){let t=i.slice();t[t.length-1]&=127;let e=0n;for(let A=t.length-1;A>=0;A--)e=e<<8n|BigInt(t[A]);return e}function ga(i){let t=new Uint8Array(CA),e=i;for(let A=0;A<CA;A++)t[A]=Number(e&0xffn),e>>=8n;return t}function ya(i){let t=jt(i,gt),e=jt(-$s*Nn(jt(1n+da*t*t,gt),gt),gt),A=Kn(jt(e*e*e+$s*e*e+e,gt),(gt-1n)/2n,gt),s=jt(A*e-jt(1n-A,gt)*$s*Nn(2n,gt),gt);return ga(s)}function _a(i,t,e){let A=me(fa(i,t,e)).slice(0,CA);return ya(ma(A))}function Hn(i,t,e){let A;try{A=Qt.scalarMult(i,t)}catch{throw new yt(`${e} encodes a low-order point`)}if(A.every(s=>s===0))throw new yt(`${e} encodes a low-order point`);return A}function Qn(i,t){if(i.length!==t.length)return!1;let e=0;for(let A=0;A<i.length;A++)e|=i[A]^t[A];return e===0}var De=class i{constructor(t,e,A,s,n,r){this.role=t,this.sid=A,this.ada=s,this.adb=n,this.macKey=null,this.initiatorShare=null,this.responderShare=null,this.iskValue=null,this.scalar=e,this.publicShare=Hn(e,r,"generator")}static start(t){let e=t.scalar??crypto.getRandomValues(new Uint8Array(CA)),A=_a(t.prs,t.ci??new Uint8Array(0),t.sid);return new i(t.role,e,t.sid,t.ada??new Uint8Array(0),t.adb??new Uint8Array(0),A)}derive(t){if(!this.scalar)throw new yt("derive() may only be called once");let e=this.scalar;if(this.scalar=null,t.length!==EA)throw new yt(`peer share must be ${EA} bytes, got ${t.length}`);let A=Hn(e,t,"peer share");this.role==="initiator"?(this.initiatorShare=this.publicShare,this.responderShare=t):(this.initiatorShare=t,this.responderShare=this.publicShare);let s=Te(Ee(this.initiatorShare,this.ada),Ee(this.responderShare,this.adb));this.iskValue=me(Te(Ee(ha,this.sid,A),s)),this.macKey=me(Te(ua,this.sid,this.iskValue))}get isk(){if(!this.iskValue)throw new yt("derive() must be called before reading the ISK");return this.iskValue}tag(){return this.mac(!0)}verify(t){let e=this.mac(!1);return Qn(e,this.mac(!0))?!1:Qn(t,e)}mac(t){if(!this.macKey||!this.initiatorShare||!this.responderShare)throw new yt("derive() must be called before confirmation tags");let e=t===(this.role==="initiator"),A=e?this.initiatorShare:this.responderShare,s=e?this.ada:this.adb;return Zt(me,this.macKey,Ee(A,s))}};var Ie=new TextEncoder().encode("sendspin-pairing-code-derive-v1"),Ps=new TextEncoder().encode("sendspin-pair-commit-v1"),Js=32,Gn=6,ba=24,wa=8,xa=new RegExp(`^[0-9]{${wa}}$`);function qn(i){return xa.test(i)}function Zn(){return crypto.getRandomValues(new Uint8Array(Js))}function jn(i){let t=new Uint8Array(Ps.length+i.length);return t.set(Ps,0),t.set(i,Ps.length),tt(t)}function Yn(i,t,e){let A=new Uint8Array(Ie.length+i.length+t.length+e.length);return A.set(Ie,0),A.set(i,Ie.length),A.set(t,Ie.length+i.length),A.set(e,Ie.length+i.length+t.length),tt(A)}function Wn(i,t,e){let A=Yn(i,t,e),s=0n;for(let r of A)s=s<<8n|BigInt(r);return(s%10n**BigInt(Gn)).toString().padStart(Gn,"0")}function Vn(i,t,e){return Yn(i,t,e).slice(0,ba)}var Xn="ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",TA=32;function Sa(i){let t=0,e=0,A="";for(let s of i){for(e=e<<8|s,t+=8;t>=5;)A+=Xn[e>>>t-5&31],t-=5;e&=(1<<t)-1}return t>0&&(A+=Xn[e<<5-t&31]),A}function tr(i,t){return`SP:${i}${Sa(t).replace(/2/g,"9")}`}function Us(i,t){let e=et(i);if(e.length!==TA)throw new Error(`clientId must decode to ${TA} bytes`);if(t.length!==TA)throw new Error(`pairingPsk must be ${TA} bytes`);let A=new Uint8Array(e.length+t.length);return A.set(e),A.set(t,e.length),tr("0",A)}function er(i){return tr("1",i)}var re=i=>new TextEncoder().encode(i);function va(...i){let t=new Uint8Array(i.reduce((A,s)=>A+s.length,0)),e=0;for(let A of i)t.set(A,e),e+=A.length;return t}var Ma="sendspin-pair-pake-v1",ka=re("sendspin-pair-psk-wrap-v1"),Ca=re("sendspin-pair-nonce-wrap-v1"),Ar=re("server"),sr=re("client"),Ea=12e4,Ta=3e5,Da=5,Ia=20,ir="sendspin-pair-failures",nr="dynamic_pin",Ra=["dynamic_pairing_code","static_pairing_code"];function rr(i){return i?.length?{locations:i}:{}}function La(i){if(!(!Array.isArray(i)||i.length===0))return i.every(t=>typeof t=="string"&&t!=="")?i:void 0}var DA=class{constructor(t){if(this.deps=t,this.pendingPsk=null,this.phase="idle",this.method=null,this.cpace=null,this.nonceB=null,this.attemptTimer=null,this.windowTimer=null,this.windowOpen=!1,this.windowBound=!1,this.windowFailures=0,this.currentSid=null,this.pairingActivateCount=0,this.attemptIndex=0,this.format=null,this.code=null,this.prs=null,this.round=0,this.discardStray=!1,t.staticPairingCode!==void 0&&!qn(t.staticPairingCode))throw new Error("staticPairingCode must be exactly 8 decimal digits");let e=t.pairingCodeFormats;if(e?.length===0)throw new Error("pairingCodeFormats must not be empty");if(e?.includes("qr_code")&&!(t.pairingCodeOutChannels??["display"]).includes("display"))throw new Error("qr_code in pairingCodeFormats needs display in pairingCodeOutChannels");this.rounds=this.loadRounds()}supportedPairMethods(){let t={pairing_psk:rr(this.deps.pairingPskLocations)};return this.deps.staticPairingCode!==void 0&&(t.static_pairing_code=rr(this.deps.staticPairingCodeLocations)),this.deps.onPairingCode&&(t.dynamic_pairing_code={out_channels:this.deps.pairingCodeOutChannels??["display"],formats:this.deps.pairingCodeFormats??["digits"]}),t}isRoundLimitReached(){return this.rounds>=Ia}releasePairingHold(){this.isRoundLimitReached()&&(this.phase!=="idle"&&this.phase!=="held-back"||(this.resetRounds(),this.phase==="held-back"&&!this.isHeldBack()&&this.startAttempt()))}openPairingWindow(){this.windowTimer&&clearTimeout(this.windowTimer),this.windowOpen=!0,this.windowFailures=0,this.windowTimer=setTimeout(()=>this.closeWindow(),Ta),this.phase==="held-back"&&!this.isHeldBack()&&this.startAttempt()}closeWindow(){this.windowOpen=!1,this.windowBound=!1,this.windowFailures=0,this.windowTimer&&clearTimeout(this.windowTimer),this.windowTimer=null}cancelPairing(){this.closeWindow(),this.phase!=="idle"&&this.abort("user_cancelled")}onServerHello(t){this.languages=La(t)}onActivate(t,e){if(this.discardStray=!1,!t.includes("pairing")){this.abandonAttempt("server_cancelled");return}this.abandonAttempt("superseded"),this.pairingActivateCount+=1,this.attemptIndex=this.pairingActivateCount;let{method:s,format:n}=e;if(this.method=s,s==="dynamic_pairing_code"&&(this.format=n),this.isHeldBack()){this.phase="held-back",this.deps.sendControl({type:"client/pair-pending",payload:{pairing_index:this.attemptIndex}}),this.deps.onEvent?.("pending");return}this.startAttempt()}onRefusedActivate(){this.abandonAttempt("superseded"),this.pairingActivateCount+=1,this.abort("method_not_supported")}isHeldBack(){return this.method==="static_pairing_code"?!this.windowOpen:this.method==="dynamic_pairing_code"&&this.isRoundLimitReached()}onPairInit(t){if(this.phase==="idle")return this.strayMessage();if(this.phase!=="await-init"||this.method!=="dynamic_pairing_code")return this.fail();let e=this.deps.handshakeHash();if(this.round===0){let A=this.decode(t.nonce_A,Js);if(!A)return this.fail();this.format==="qr_code"?(this.prs=Vn(e,A,this.nonceB),this.code=er(this.prs)):(this.code=Wn(e,A,this.nonceB),this.prs=re(this.code))}else if(t.nonce_A!==void 0)return this.fail();this.round+=1,this.rounds+=1,this.saveRounds(),this.currentSid=this.sid(e,this.attemptIndex,this.round),this.cpace=De.start({role:"responder",prs:this.prs,sid:this.currentSid,ada:Ar,adb:sr}),this.phase="await-auth",this.deps.onPairingCode?.(this.code,this.languages,this.format)}onPairAuth(t){if(this.phase==="idle")return this.strayMessage();if(this.phase!=="await-auth"||!this.cpace)return this.fail();let e=this.decode(t.pake_msg_1,EA);if(!e)return this.fail();this.deps.sendControl({type:"client/pair-auth",payload:{pake_msg_2:W(this.cpace.publicShare)}});try{this.cpace.derive(e)}catch(A){if(A instanceof yt)return this.fail();throw A}this.phase="await-confirm"}onPairConfirm(t){if(this.phase==="idle")return this.strayMessage();if(this.phase!=="await-confirm"||!this.cpace)return this.fail();let e=this.decode(t.server_kc,Fn);if(!e)return this.fail();if(!this.cpace.verify(e))return this.method==="dynamic_pairing_code"&&!this.isRoundLimitReached()?this.retry():(this.method==="static_pairing_code"&&(this.windowFailures+=1,this.windowFailures>=Da&&this.closeWindow()),this.abort("pairing_code_mismatch"));this.method==="dynamic_pairing_code"&&this.resetRounds();let A={client_kc:W(this.cpace.tag())};this.method==="dynamic_pairing_code"&&(A.wrapped_nonce_B=W(this.wrap(Ca,this.nonceB))),this.deps.sendControl({type:"client/pair-confirm",payload:A}),this.phase="await-finalize",this.sendFinalize()}onPairFinalize(){if(this.phase==="idle")return this.strayMessage();if(this.phase!=="await-finalize"||!this.pendingPsk)return this.fail();this.deps.pskStore.replaceLongTerm(this.pendingPsk,this.deps.serverId()),this.clearAttempt(),this.closeWindow(),this.deps.onEvent?.("finalized")}onAbort(t){this.phase==="idle"&&!this.pendingPsk||(this.clearAttempt(),this.deps.onEvent?.("aborted",t))}onConnectionClosed(){this.windowBound&&this.closeWindow(),this.reset()}reset(){this.clearAttempt(),this.discardStray=!1,this.pairingActivateCount=0,this.attemptIndex=0}startAttempt(){if(this.method==="static_pairing_code"&&(this.windowBound=!0),this.armAttemptTimer(),this.method==="pairing_psk"){this.deps.sendControl({type:"client/pair-init",payload:{pairing_index:this.attemptIndex}}),this.phase="await-finalize",this.sendFinalize(),this.deps.onEvent?.("started");return}if(this.deps.onEvent?.("started"),this.method==="dynamic_pairing_code"){this.nonceB=Zn(),this.phase="await-init",this.deps.sendControl({type:"client/pair-init",payload:{pairing_index:this.attemptIndex,commit_B:W(jn(this.nonceB))}});return}let t=this.deps.handshakeHash();this.currentSid=this.sid(t,this.attemptIndex,1),this.cpace=De.start({role:"responder",prs:new TextEncoder().encode(this.deps.staticPairingCode),sid:this.currentSid,ada:Ar,adb:sr}),this.phase="await-auth",this.deps.sendControl({type:"client/pair-init",payload:{pairing_index:this.attemptIndex}})}retry(){this.cpace=null,this.currentSid=null,this.phase="await-init",this.deps.sendControl({type:"client/pair-retry",payload:{}})}sendFinalize(){let t=crypto.getRandomValues(new Uint8Array(32));if(this.pendingPsk=t,this.cpace&&this.currentSid){this.deps.sendControl({type:"client/pair-finalize",payload:{wrapped_psk:W(this.wrap(ka,t))}});return}this.deps.sendControl({type:"client/pair-finalize",payload:{long_term_psk:W(t)}})}wrap(t,e){let A=tt(va(t,this.currentSid,this.cpace.isk));return this.deps.aeadSeal(A,e)}sid(t,e,A){let s=re(Ma),n=s.length+t.length,r=new Uint8Array(n+8);r.set(s,0),r.set(t,s.length);let o=new DataView(r.buffer);return o.setUint32(n,e,!1),o.setUint32(n+4,A,!1),r}armAttemptTimer(){this.attemptTimer=setTimeout(()=>this.abort("attempt_timeout"),Ea)}abort(t){this.clearAttempt(),this.discardStray=!0,this.deps.sendControl({type:"pair/abort",payload:{reason:t}}),this.deps.onEvent?.("aborted",t),t==="concurrent_attempt"&&this.deps.close()}fail(){this.clearAttempt(),this.deps.close()}strayMessage(){this.discardStray||this.fail()}clearAttempt(){this.attemptTimer&&clearTimeout(this.attemptTimer),this.attemptTimer=null,this.method&&Ra.includes(this.method)&&this.deps.onPairingCode?.(null),this.pendingPsk=null,this.phase="idle",this.method=null,this.cpace=null,this.currentSid=null,this.nonceB=null,this.format=null,this.code=null,this.prs=null,this.round=0}abandonAttempt(t){this.phase==="idle"&&!this.pendingPsk||(this.clearAttempt(),this.deps.onEvent?.("aborted",t))}decode(t,e){if(typeof t!="string")return null;try{let A=et(t);return A.length===e?A:null}catch{return null}}loadRounds(){try{let t=this.deps.storage?.getItem(ir);return t?JSON.parse(t)[nr]??0:0}catch{return 0}}saveRounds(){this.deps.storage?.setItem(ir,JSON.stringify({[nr]:this.rounds}))}resetRounds(){this.rounds=0,this.saveRounds()}};var Oa=/^_[^@]+@[^@]+$/;var Re=i=>i.split("@")[0];function $a(i){let t=new Set,e=new Map;for(let A of i){if(!Oa.test(A.id))throw new Error(`Application role id ${JSON.stringify(A.id)} must start with "_" and end in "@<version>"`);if(t.has(A.id))throw new Error(`Application role ${A.id} is listed twice`);t.add(A.id);let s=Re(A.id);for(let n of A.binaryMessageIds??[]){if(!Number.isInteger(n)||n<192||n>255)throw new RangeError(`Application role ${A.id} binary message ID ${n} is outside 192-255`);let r=e.get(n);if(r!==void 0&&r!==s)throw new Error(`Binary message ID ${n} is claimed by both ${r} and ${s}`);e.set(n,s)}}}var IA=class{constructor(t,e){this.roles=t,this.deps=e,this.active=new Map,this.serverHello={},this.connection=0,$a(t)}get supportedRoles(){return this.roles.map(t=>t.id)}get helloSupport(){return Object.fromEntries(this.roles.filter(t=>t.support!==void 0).map(t=>[`${t.id}_support`,t.support]))}applyActivation(t){let e=this.connection;for(let[s,n]of this.active)if(!t.has(s.id)&&(this.active.delete(s),n.clientStreamOpen&&this.deps.sendControl(or(s),s.id),_t(s,"onDeactivate",()=>s.onDeactivate?.()),this.connection!==e))return!1;let A=!1;for(let s of this.roles){if(!t.has(s.id)||this.active.has(s))continue;let n={streamActive:!1,clientStreamOpen:!1};this.active.set(s,n),A=!0;let r=this.createSession(s,n);if(_t(s,"onActivate",()=>s.onActivate?.(r)),this.connection!==e)return!1}return A}deactivateAll(){this.connection++;let t=[...this.active.keys()];this.active.clear();for(let e of t)_t(e,"onDeactivate",()=>e.onDeactivate?.())}clientStateObjects(){let t={};for(let e of this.active.keys()){if(!e.getState)continue;let A=_t(e,"getState",()=>e.getState?.());A!==void 0&&(t[Re(e.id)]=A)}return t}handleMessage(t){let e=t.payload??{};if(t.type==="server/hello"){this.serverHello=e;return}let A=e.server_transmitted,s=Array.isArray(e.roles)?e.roles:void 0;for(let[n,r]of this.active){let o=Re(n.id);switch(t.type){case"server/state":o in e&&_t(n,"onServerState",()=>n.onServerState?.(e[o]));break;case"server/command":o in e&&_t(n,"onServerCommand",()=>n.onServerCommand?.(e[o]));break;case"stream/start":if(o in e){let a=r.streamActive;r.streamActive=!0,_t(n,"onStreamStart",()=>n.onStreamStart?.(e[o],a,A))}break;case"stream/clear":s?.includes(o)&&_t(n,"onStreamClear",()=>n.onStreamClear?.(A));break;case"stream/end":(s?s.includes(o):r.streamActive)&&(r.streamActive=!1,_t(n,"onStreamEnd",()=>n.onStreamEnd?.()));break}}}handleBinary(t,e){let A=t[0];if(A<192)return!1;for(let s of this.active.keys())if(s.binaryMessageIds?.includes(A)){_t(s,"onBinaryMessage",()=>s.onBinaryMessage?.(A,t.subarray(1),e));break}return!0}createSession(t,e){let A=Re(t.id),s=this.deps,n=()=>this.active.get(t)===e;return{serverSupport:this.serverHello[`${t.id}_support`],sendCommand(r){n()&&s.sendControl({type:"client/command",payload:{[A]:r}},t.id)},sendState(){n()&&s.sendState()},sendBinaryMessage(r,o){if(!t.binaryMessageIds?.includes(r))throw new RangeError(`Binary message ID ${r} is not assigned to ${t.id}`);n()&&s.sendBinary(r,o,t.id)},startClientStream(r){n()&&(e.clientStreamOpen=!0,s.sendControl({type:"client-stream/start",payload:{[A]:r}},t.id))},endClientStream(){n()&&(e.clientStreamOpen=!1,s.sendControl(or(t),t.id))},computeClientTime:r=>s.computeClientTime(r),computeServerTime:r=>s.computeServerTime(r)}}};function _t(i,t,e){try{return e()}catch(A){console.error(`Sendspin: application role ${i.id} ${t} threw`,A);return}}function or(i){return{type:"client-stream/end",payload:{roles:[Re(i.id)]}}}var Le=class{constructor(t){this.handshakeInfo=null,this.applicationRoles=new IA(t.applicationRoles??[],{sendControl:(r,o)=>this.transport.sendControl(r,o),sendBinary:(r,o,a)=>this.transport.sendBinary(r,o,a),sendState:()=>this.protocolHandler.sendStateUpdate(),computeClientTime:r=>this.timeFilter.computeClientTime(r),computeServerTime:r=>this.timeFilter.computeServerTime(r)}),t.storage||console.warn("Sendspin: no storage provided, so the identity, Pairing PSK, paired servers and pairing round count are kept in memory only and reset on reload."),this.identity=ve.loadOrCreate(t.storage??null);let e=t.clientName??`Sendspin JS Client (${this.identity.clientId.slice(0,6)})`;this.config={...t,clientName:e},this.delayStore=new Fe(t.storage??null);let A=this.delayStore.load(),s=t.syncDelay??A??t.defaultSyncDelay??0;this._syncDelayMs=ct(s),this.timeFilter=new he,this.stateManager=new Je(t.onStateChange,new Ke(t.storage??null)),this.decoder=new le(r=>this._onAudioData?.(r),()=>this.stateManager.streamGeneration),this.wsManager=new Qe(t.reconnect),this.pskStore=new Me(t.storage??null);for(let r of t.longTermPsks??[]){if(!r.serverId)throw new Error("longTermPsks entries need a serverId");this.pskStore.addLongTerm(et(r.psk),r.serverId)}this.pskStore.getOrCreatePairingPsk(),this.transport=new kA(this.wsManager,{identity:this.identity,pskStore:this.pskStore,suiteId:t.suite??"chacha",unpairedAccess:t.unpairedAccess??!0,pairMethods:()=>this.pairing.supportedPairMethods()},{onHandshakeComplete:r=>{let o=this.handshakeInfo!==null;this.handshakeInfo=r,this.pairing.reset(),this.protocolHandler.resetActivation(o)},onControlMessage:(r,o)=>this.routeControl(r,o),onBinaryMessage:(r,o)=>{this.applicationRoles.handleBinary(r,o)||this.handleBinaryMessage(r.buffer)},onActivateRefused:r=>{this.protocolHandler.resumeActivation(r),this.pairing.onRefusedActivate()}}),this.pairing=new DA({sendControl:r=>this.transport.sendControl(r),close:()=>this.transport.close(),pskStore:this.pskStore,serverId:()=>this.handshakeInfo?.serverId??"",handshakeHash:()=>this.transport.handshakeHash,aeadSeal:(r,o)=>se[t.suite??"chacha"].aeadEncrypt(r,0n,new Uint8Array(0),o),storage:t.storage??null,onPairingCode:t.onPairingCode??null,pairingCodeOutChannels:t.pairingCodeOutChannels,pairingCodeFormats:t.pairingCodeFormats,staticPairingCode:t.staticPairingCode,staticPairingCodeLocations:t.staticPairingCodeLocations,pairingPskLocations:t.pairingPskLocations,onEvent:(r,o)=>this.config.onPairing?.(r,o)});let n={pairMethods:()=>this.pairing.supportedPairMethods(),unpairedAccess:t.unpairedAccess??!0};this.protocolHandler=new He(this.transport,n,this,this.stateManager,this.timeFilter,{clientName:e,productName:t.productName,manufacturer:t.manufacturer,softwareVersion:t.softwareVersion,codecs:t.codecs,bufferCapacity:t.bufferCapacity,requiredLeadTimeMs:t.requiredLeadTimeMs,minBufferMs:t.minBufferMs,useHardwareVolume:t.useHardwareVolume,onVolumeCommand:t.onVolumeCommand,onDelayCommand:t.onDelayCommand,getExternalVolume:t.getExternalVolume,applicationRoles:this.applicationRoles})}routeControl(t,e){if(t.type==="server/hello"&&this.pairing.onServerHello((t.payload??{}).languages),t.type==="server/activate"){let A=t.payload??{};this.protocolHandler.handleServerMessage(t,e),this.pairing.onActivate(A.activities??[],A.pairing);return}if(t.type==="server/pair-init")return this.pairing.onPairInit(t.payload??{});if(t.type==="server/pair-auth")return this.pairing.onPairAuth(t.payload??{});if(t.type==="server/pair-confirm")return this.pairing.onPairConfirm(t.payload??{});if(t.type==="server/pair-finalize")return this.pairing.onPairFinalize();if(t.type==="pair/abort")return this.pairing.onAbort((t.payload??{}).reason??"");this.protocolHandler.handleServerMessage(t,e),this.applicationRoles.handleMessage(t)}onTransportClose(){this.resetSession(),console.log("Sendspin: Connection closed"),this._onConnectionClose?.()}resetSession(){this.transport.onSocketClosed(),this.handshakeInfo=null,this.protocolHandler.stopTimeSync(),this.protocolHandler.resetActivation(),this.pairing.onConnectionClosed(),this.stateManager.clearConnectionState(),this.stateManager.clearStateUpdateInterval()}handleBinaryMessage(t){if(new Uint8Array(t)[0]!==4)return;if(t.byteLength<13){console.warn("Sendspin: closing the connection due to an invalid audio message shorter than 13 bytes"),this.transport.close();return}let e=this.stateManager.currentStreamFormat;if(!e){console.warn("Sendspin: Received audio chunk but no stream format set");return}let A=this.stateManager.streamGeneration;this.decoder.handleBinaryMessage(t,e,A)}handleStreamStart(t,e){e||this.discardPendingAudio(),this._onStreamStart?.(t,e)}handleStreamClear(){this.discardPendingAudio(),this._onStreamClear?.()}handleStreamEnd(){this.discardPendingAudio(),this._onStreamEnd?.()}discardPendingAudio(){this.stateManager.resetStreamAnchors(),this.decoder.clearState()}handleVolumeUpdate(){this._onVolumeUpdate?.()}applyDelay(t){this._syncDelayMs=ct(t),this.delayStore.save(this._syncDelayMs),this._onSyncDelayChange?.(this._syncDelayMs)}handleSyncDelayChange(t){this.applyDelay(t)}getSyncDelayMs(){return this._syncDelayMs}set onAudioData(t){this._onAudioData=t}set onStreamStart(t){this._onStreamStart=t}set onStreamClear(t){this._onStreamClear=t}set onStreamEnd(t){this._onStreamEnd=t}set onVolumeUpdate(t){this._onVolumeUpdate=t}set onSyncDelayChange(t){this._onSyncDelayChange=t}set onConnectionOpen(t){this._onConnectionOpen=t}set onConnectionClose(t){this._onConnectionClose=t}async connect(){this.isConnected&&this.resetSession();let t=()=>{this.timeFilter.reset(),this._onConnectionOpen?.(),this.transport.start()},e=n=>{this.transport.handleRaw(n)},A=n=>{console.error("Sendspin: WebSocket error",n)},s=()=>this.onTransportClose();if(this.config.webSocket)await this.wsManager.adopt(this.config.webSocket,t,e,A,s);else{if(!this.config.url)throw new Error("SendspinCore requires either url or webSocket to be provided.");if(!/^wss?:\/\//i.test(this.config.url))throw new Error(`The url option must use ws:// or wss://, got ${JSON.stringify(this.config.url)}.`);await this.wsManager.connect(this.config.url,t,e,A,s)}}resetPlaybackState(){this.stateManager.isPlaying=!1,this.stateManager.currentStreamFormat=null}disconnect(t="user_request"){this.transport.ready&&this.protocolHandler.sendGoodbye(t),this.protocolHandler.stopTimeSync(),this.stateManager.clearAllIntervals(),this.wsManager.disconnect(),this.resetSession(),this.decoder.close(),this.timeFilter.reset(),this.stateManager.reset()}leaveGroup(){this.protocolHandler.sendLeave()}setVolume(t){if(Number.isNaN(t))throw new RangeError("volume must be a number");this.stateManager.volume=t,this._onVolumeUpdate?.(),this.protocolHandler.sendStateUpdate()}setMuted(t){this.stateManager.muted=t,this._onVolumeUpdate?.(),this.protocolHandler.sendStateUpdate()}setSyncDelay(t){this.applyDelay(t),this.protocolHandler.sendStateUpdate()}setRequiredLeadTimeMs(t){this.protocolHandler.setRequiredLeadTimeMs(t)}setMinBufferMs(t){this.protocolHandler.setMinBufferMs(t)}sendCommand(t,e){let A=this.stateManager.serverState.controller?.supported_commands;if(!A)throw new Error(`Command '${t}' cannot be sent before the server reports its controller state`);if(!A.includes(t))throw new Error(`Command '${t}' is not supported by the server. Supported commands: ${A.join(", ")}`);if(t==="volume"&&Number.isNaN(e.volume))throw new RangeError("volume must be a number");if(t==="seek"&&!Number.isFinite(e.position_ms))throw new RangeError("position_ms must be a finite number");if(t==="seek_relative"&&!Number.isFinite(e.offset_ms))throw new RangeError("offset_ms must be a finite number");this.protocolHandler.sendCommand(t,e)}get isPlaying(){return this.stateManager.isPlaying}get volume(){return this.stateManager.volume}get muted(){return this.stateManager.muted}get playerState(){return this.stateManager.playerState}get currentFormat(){return this.stateManager.currentStreamFormat}get isConnected(){return this.wsManager.isConnected()}get clientId(){return this.identity.clientId}get pairingToken(){return Us(this.clientId,this.pskStore.getOrCreatePairingPsk())}rotatePairingPsk(){return this.pskStore.rotatePairingPsk(),this.pairingToken}openPairingWindow(){this.pairing.openPairingWindow()}cancelPairing(){this.pairing.cancelPairing()}releasePairingHold(){this.pairing.releasePairingHold()}isRoundLimitReached(){return this.pairing.isRoundLimitReached()}get timeSyncInfo(){return{synced:this.timeFilter.is_synchronized,offset:Math.round(this.timeFilter.offset/1e3),error:Math.round(this.timeFilter.error/1e3)}}getCurrentServerTimeUs(){return this.timeFilter.computeServerTime(Math.floor(performance.now()*1e3))}get trackProgress(){let t=this.stateManager.serverState.metadata;if(!t?.progress)return null;let A=this.getCurrentServerTimeUs()-t.timestamp,s=t.progress.track_progress+A*t.progress.playback_speed/1e6,n=t.progress.track_duration;return{positionMs:n===0?Math.max(0,s):Math.max(0,Math.min(s,n)),durationMs:n,playbackSpeed:t.progress.playback_speed/1e3}}get _stateManager(){return this.stateManager}get _timeFilter(){return this.timeFilter}};var RA=class{constructor(){this.activeSource="estimated",this._pendingCutover=!1,this._lastRejectReason=null,this._timestampPromotionDisabled=!1,this.lastSample=null,this.goodSamples=0,this.badSamples=0,this.goodSinceMs=null,this.estimateAudioTimeSec=null,this.estimateAtMs=null}get active(){return this.activeSource}get pendingCutover(){return this._pendingCutover}set pendingCutover(t){this._pendingCutover=t}get lastRejectReason(){return this._lastRejectReason}get timestampGoodSamples(){return this.goodSamples}get timestampPromotionDisabled(){return this._timestampPromotionDisabled}disableTimestampPromotion(){this._timestampPromotionDisabled=!0}setActive(t){return this.activeSource===t?!1:(this.activeSource=t,this._pendingCutover=t==="timestamp",this._pendingCutover&&this._onPromotion?.(),this._pendingCutover)}onPromotion(t){this._onPromotion=t}reset(){this.activeSource="estimated",this._pendingCutover=!1,this.lastSample=null,this.goodSamples=0,this._lastRejectReason=null,this.badSamples=0,this.goodSinceMs=null,this.estimateAudioTimeSec=null,this.estimateAtMs=null}demote(t){this.reset(),this._lastRejectReason=t}rejectSample(t,e=!1){if(this.lastSample=null,this.goodSamples=0,this.goodSinceMs=null,this._lastRejectReason=t,this.activeSource!=="timestamp"){this.badSamples=0;return}this.badSamples+=1,(e||this.badSamples>=2)&&this.demote(t)}getEstimatedTime(t,e){if(this.estimateAudioTimeSec===null)this.estimateAudioTimeSec=t,this.estimateAtMs=e;else if(this.estimateAtMs!==null){let A=Math.max(0,(e-this.estimateAtMs)/1e3),s=this.estimateAudioTimeSec+A;this.estimateAtMs=e;let n=t-s;if(Math.abs(n)>.5)this.estimateAudioTimeSec=t;else{let r=Math.max(-.002,Math.min(.002,n)),o=Math.max(this.estimateAudioTimeSec,s+r);this.estimateAudioTimeSec=Math.min(o,t+.1)}}return this.estimateAudioTimeSec??t}getTimestampDerivedTime(t,e,A){if(this._timestampPromotionDisabled)return(this.activeSource!=="estimated"||this.lastSample!==null||this.goodSamples!==0||this._lastRejectReason!==null)&&this.reset(),null;let s=e.getOutputTimestamp;if(typeof s!="function")return this.activeSource==="timestamp"&&this.demote("getOutputTimestamp unavailable"),null;try{let n=s.call(e),r=performance.now(),o=r-n.performanceTime;if(o<-5)return this.rejectSample(`performanceTime in future (${o.toFixed(1)}ms)`,!0),null;let a=Math.max(0,o),c=n.contextTime+a/1e3+A,l={contextTimeSec:n.contextTime,performanceTimeMs:n.performanceTime,nowMs:r,predictedAudioTimeSec:c,rawAudioTimeSec:t};if(a>250)return this.rejectSample(`stale timestamp (${a.toFixed(1)}ms old)`,!0),null;let h=c-t;if(Math.abs(h)>.25)return this.rejectSample(`timestamp/raw divergence ${Math.abs(h*1e3).toFixed(1)}ms`,!0),null;let d=this.lastSample;if(d){let u=n.performanceTime-d.performanceTimeMs;if(u<0)return this.rejectSample(`performanceTime moved backward (${u.toFixed(1)}ms)`,!0),null;if(c<d.predictedAudioTimeSec-.005)return this.rejectSample(`predicted audio time moved backward ${((d.predictedAudioTimeSec-c)*1e3).toFixed(1)}ms`,!0),null;let p=d.predictedAudioTimeSec-d.rawAudioTimeSec;if(Math.abs(h-p)>.05)return this.rejectSample(`timestamp/raw divergence drift ${Math.abs((h-p)*1e3).toFixed(1)}ms`),null;if(u>=40){let f=u/1e3,m=(n.contextTime-d.contextTimeSec)/f,g=(c-d.predictedAudioTimeSec)/f;if(m<.95||m>1.05)return this.rejectSample(`context slope ${m.toFixed(3)} out of range`),null;if(g<.95||g>1.05)return this.rejectSample(`predicted slope ${g.toFixed(3)} out of range`),null}}return this.lastSample=l,this.badSamples=0,this.goodSinceMs===null&&(this.goodSinceMs=r),this.goodSamples+=1,this.activeSource!=="timestamp"&&this.goodSamples>=6&&this.goodSinceMs!==null&&r-this.goodSinceMs>=750&&(this.setActive("timestamp"),this._lastRejectReason=null),c}catch(n){let r=n instanceof Error?`getOutputTimestamp failed: ${n.message}`:`getOutputTimestamp failed: ${String(n)}`;return this.rejectSample(r,!0),null}}getTimingSnapshot(t,e=0){let A=performance.now(),s=A*1e3;if(!t)return{audioContextTimeSec:0,audioContextRawTimeSec:0,nowMs:A,nowUs:s};let n=t.currentTime,r=this.getEstimatedTime(n,A),o=this.getTimestampDerivedTime(n,t,e),a=this.activeSource==="timestamp"&&o!==null?o:r;return Number.isFinite(a)||(a=n),{audioContextTimeSec:a,audioContextRawTimeSec:n,nowMs:A,nowUs:s}}};var LA=class{get minScheduleTimeSec(){return this._minScheduleTimeSec}setMinScheduleTime(t){this._minScheduleTimeSec=t}clearMinScheduleTime(){this._minScheduleTimeSec=null}constructor(t){this.onCheck=t,this.interval=null,this.breachStartedAtMs=null,this.lastRecorrectionAtMs=-1/0,this.prevRawSyncErrorMs=null,this.pendingJumpSign=null,this.pendingJumpAtMs=null,this.transientStartedAtMs=null,this._hardResyncGraceUntilMs=null,this._lastHardResyncAtMs=-1/0,this._minScheduleTimeSec=null}start(){this.interval===null&&(this.interval=globalThis.setInterval(()=>this.onCheck(),250))}stop(){this.interval!==null&&(clearInterval(this.interval),this.interval=null),this.resetCheckState(),this.lastRecorrectionAtMs=-1/0}clearBreachState(){this.breachStartedAtMs=null,this.pendingJumpSign=null,this.pendingJumpAtMs=null,this.transientStartedAtMs=null}resetCheckState(){this.clearBreachState(),this.prevRawSyncErrorMs=null}clearHardResyncCooldown(){this._hardResyncGraceUntilMs=null,this._lastHardResyncAtMs=-1/0}armStartupGrace(t,e){if(e){this._hardResyncGraceUntilMs=null;return}this._hardResyncGraceUntilMs===null&&(this._hardResyncGraceUntilMs=t+1e3)}canUseHardResync(t,e){if(e)this._hardResyncGraceUntilMs=null;else if(this._hardResyncGraceUntilMs!==null&&t<this._hardResyncGraceUntilMs)return!1;return t-this._lastHardResyncAtMs>=500}noteHardResync(t){this._lastHardResyncAtMs=t}markRecorrection(t){this.lastRecorrectionAtMs=t}shouldIgnoreTransientJump(t,e){let A=this.prevRawSyncErrorMs;if(this.prevRawSyncErrorMs=t,A===null)return this.pendingJumpSign=null,this.pendingJumpAtMs=null,!1;let s=t-A,n=Math.sign(s);if(!(Math.abs(s)>=25))return this.pendingJumpSign=null,this.pendingJumpAtMs=null,!1;let o=this.pendingJumpSign===n&&this.pendingJumpAtMs!==null&&e-this.pendingJumpAtMs<=1e3;return this.pendingJumpSign=n,this.pendingJumpAtMs=e,!o}shouldRecorrect(t,e,A){let s=this.shouldIgnoreTransientJump(e,A);if(t<30)return this.clearBreachState(),!1;if(s){if(this.transientStartedAtMs===null&&(this.transientStartedAtMs=A),A-this.transientStartedAtMs<400)return this.breachStartedAtMs=null,!1;this.breachStartedAtMs===null&&(this.breachStartedAtMs=this.transientStartedAtMs)}else this.transientStartedAtMs=null;return this.breachStartedAtMs===null?(this.breachStartedAtMs=A,!1):!(A-this.breachStartedAtMs<400||A-this.lastRecorrectionAtMs<1500)}fullReset(){this.stop(),this._hardResyncGraceUntilMs=null,this._lastHardResyncAtMs=-1/0,this._minScheduleTimeSec=null}},ar=.3;var cr="sendspin-output-latency-us";function lr(i,t){return typeof i=="number"&&Number.isFinite(i)&&i>=0&&i<=5?i:t}var OA=class{constructor(t){this.storage=t,this.smoothedOutputLatencyUs=null,this.lastLatencyPersistAtMs=null,this.loadPersisted()}loadPersisted(){if(this.storage)try{let t=this.storage.getItem(cr);if(t){let e=parseFloat(t);!isNaN(e)&&e>=0&&(this.smoothedOutputLatencyUs=e)}}catch{}}persist(){if(!(!this.storage||this.smoothedOutputLatencyUs===null))try{this.storage.setItem(cr,this.smoothedOutputLatencyUs.toString())}catch{}}getRawUs(t){if(!t)return 0;let e=lr(t.baseLatency,0),A=lr(t.outputLatency,.04);return(e+A)*1e6}getSmoothedUs(t){let e=this.getRawUs(t);if(e<=0&&this.smoothedOutputLatencyUs!==null)return this.smoothedOutputLatencyUs;this.smoothedOutputLatencyUs===null?this.smoothedOutputLatencyUs=e:this.smoothedOutputLatencyUs=.01*e+(1-.01)*this.smoothedOutputLatencyUs;let A=typeof performance<"u"?performance.now():Date.now();return(this.lastLatencyPersistAtMs===null||A-this.lastLatencyPersistAtMs>=1e4)&&(this.persist(),this.lastLatencyPersistAtMs=A),this.smoothedOutputLatencyUs}reset(){this.smoothedOutputLatencyUs=null}};function dr(){return typeof navigator>"u"?void 0:navigator}function hr(i){return/iPad|iPhone|iPod/i.test(i.userAgent)||i.platform==="MacIntel"&&(i.maxTouchPoints??0)>1}function ur(i=dr()){if(!i)return!1;if(hr(i))return!0;let{userAgent:t}=i;return/Firefox/i.test(t)?!0:/Macintosh/i.test(t)&&/AppleWebKit/i.test(t)&&/Safari/i.test(t)&&!/Chrome|Chromium|Edg|OPR/i.test(t)}function pr(i=dr()){return i&&hr(i)?55:0}var Yt=8,Ba=1,za=Math.min(1,2*Ba/Yt),Ns=new Float32Array(Yt);for(let i=0;i<Yt;i++)Ns[i]=(Yt-i)/(Yt+1)*za;var fr=.003,$A=.005,mr=.05,Pa=20,Ja=8,Ua=4,Na=1.5,Ha=2,Qa=8,Fa=.5,Ka=.1,Ga=5,qa=.015;function Za(i){return Math.pow(i/100,1.5)}var gr={sync:{resyncAboveMs:200,rate2AboveMs:35,rate1AboveMs:8,samplesBelowMs:8,deadbandBelowMs:1,enableRecorrectionMonitor:!0},quality:{resyncAboveMs:35,rate2AboveMs:1/0,rate1AboveMs:1/0,samplesBelowMs:35,deadbandBelowMs:1,enableRecorrectionMonitor:!1},"quality-local":{resyncAboveMs:600,rate2AboveMs:1/0,rate1AboveMs:1/0,samplesBelowMs:0,deadbandBelowMs:5,enableRecorrectionMonitor:!1}},Oe=class{constructor(t){this.audioContext=null,this.gainNode=null,this.streamDestination=null,this.audioBufferQueue=[],this.scheduledSources=[],this.nextPlaybackTime=0,this.nextScheduleTime=0,this.lastScheduledServerTime=0,this.currentSyncErrorMs=0,this.smoothedSyncErrorMs=0,this.resyncCount=0,this.currentPlaybackRate=1,this.currentCorrectionMethod="none",this.lastSamplesAdjusted=0,this._correctionMode="sync",this._lastStatusLogMs=0,this._intervalResyncCount=0,this.contextTimeAtRenderPosition=ur(),this.scheduleTimeout=null,this.refillTimeout=null,this.queueProcessScheduled=!1,this.clockSource=new RA,this.stateManager=t.stateManager,this.timeFilter=t.timeFilter,this.outputMode=t.outputMode??"direct",this.audioElement=t.audioElement,this.isAndroid=t.isAndroid??!1,this.isCastRuntime=t.isCastRuntime??!1,this.ownsAudioElement=t.ownsAudioElement??!1,this.silentAudioSrc=t.silentAudioSrc,this.syncDelayMs=ct(t.syncDelayMs??0),this.useHardwareVolume=t.useHardwareVolume??!1,this._correctionMode=t.correctionMode??"sync",this.useOutputLatencyCompensation=t.useOutputLatencyCompensation??!0,this.unreportedOutputLatencySec=this.useOutputLatencyCompensation?pr()/1e3:0,this.correctionThresholds={...gr};let e=t.correctionThresholds;if(e)for(let A of Object.keys(e)){let s=e[A];s&&(this.correctionThresholds[A]={...gr[A],...s})}this.latencyTracker=new OA(t.storage??null),this.isCastRuntime&&this.clockSource.disableTimestampPromotion(),this.clockSource.onPromotion(()=>{(this.audioBufferQueue.length>0||this.scheduledSources.length>0)&&this.scheduleQueueProcessing()}),this.recorrectionMonitor=new LA(()=>this.checkRecorrection())}get correctionMode(){return this._correctionMode}setCorrectionMode(t){this._correctionMode=t,this.correctionThresholds[t].enableRecorrectionMonitor?this.recorrectionMonitor.start():this.recorrectionMonitor.stop()}get usesRecorrectionMonitor(){return this.correctionThresholds[this._correctionMode].enableRecorrectionMonitor}measurePlayoutLatencySec(){return this.latencyTracker.getSmoothedUs(this.audioContext)/1e6}getTargetScheduledHorizonSec(){if(this.isCastRuntime)return Na;let t=this.timeFilter.error/1e3;return t<Ha?Pa:t<=Qa?Ja:Ua}getScheduledAheadSec(t){let e=this.nextScheduleTime;for(let A of this.scheduledSources)A.endTime>e&&(e=A.endTime);return e<=0?0:Math.max(0,e-t)}resetScheduledPlaybackState(t){this.nextPlaybackTime=0,this.nextScheduleTime=0,this.lastScheduledServerTime=0,this.recorrectionMonitor.clearMinScheduleTime(),this.recorrectionMonitor.clearHardResyncCooldown(),this.clockSource.pendingCutover=!1,this.recorrectionMonitor.resetCheckState(),this.resetSyncErrorEma(),this.currentSyncErrorMs=0,this.currentPlaybackRate=1,this.currentCorrectionMethod="none",this.lastSamplesAdjusted=0,this._lastStatusLogMs=0,this._intervalResyncCount=0}pruneExpiredScheduledSources(t){this.scheduledSources.length!==0&&(this.scheduledSources=this.scheduledSources.filter(e=>e.endTime>t),this.scheduledSources.length===0&&this.resetScheduledPlaybackState("no scheduled audio ahead"))}performGuardedCutover(t,e={}){if(!this.audioContext)return;let A=e.incrementResyncCount??!1,s=e.markCooldown??!0,n=performance.now(),r=this.audioContext.currentTime+ar;A&&(this.resyncCount++,this._intervalResyncCount++),this.resetSyncErrorEma(),this.currentCorrectionMethod="resync",this.lastSamplesAdjusted=0,this.currentPlaybackRate=1;let o=this.cutScheduledSources(r);this.recorrectionMonitor.setMinScheduleTime(Math.max(r,o.keptTailEndTimeSec)),this.nextPlaybackTime=0,this.nextScheduleTime=0,this.lastScheduledServerTime=0,this.recorrectionMonitor.resetCheckState(),s&&this.recorrectionMonitor.markRecorrection(n),this.recorrectionMonitor.noteHardResync(n),this.processAudioQueue()}checkRecorrection(){if(!this.usesRecorrectionMonitor){this.recorrectionMonitor.resetCheckState();return}if(!this.audioContext||this.audioContext.state!=="running"){this.recorrectionMonitor.resetCheckState();return}if(!this.timeFilter.is_synchronized||!this.stateManager.isPlaying||this.nextPlaybackTime===0||this.lastScheduledServerTime===0){this.recorrectionMonitor.resetCheckState();return}let t=this.measurePlayoutLatencySec(),{audioContextTimeSec:e,audioContextRawTimeSec:A,nowMs:s,nowUs:n}=this.clockSource.getTimingSnapshot(this.audioContext,this.contextTimeAtRenderPosition?0:t);if(this.pruneExpiredScheduledSources(A),this.getScheduledAheadSec(A)<=0){this.recorrectionMonitor.resetCheckState(),this.audioBufferQueue.length>0&&this.processAudioQueue();return}let r=this.useOutputLatencyCompensation?t:0,o=this.computeTargetPlaybackTime(this.lastScheduledServerTime,e,n,r),a=(this.nextPlaybackTime-o)*1e3,c=this.applySyncErrorEma(a);this.recorrectionMonitor.shouldRecorrect(Math.abs(c),a,s)&&this.performGuardedCutover("recorrection",{incrementResyncCount:!0,markCooldown:!0})}getSyncDelayMs(){return this.syncDelayMs}setSyncDelay(t){let e=ct(t),A=e-this.syncDelayMs;this.syncDelayMs=e,A!==0&&(!this.audioContext||this.audioContext.state!=="running"||this.stateManager.isPlaying&&(this.scheduledSources.length===0&&this.audioBufferQueue.length===0&&this.nextPlaybackTime===0||this.performGuardedCutover("delay-change",{incrementResyncCount:!1,markCooldown:!0})))}get syncInfo(){return{clockDriftPercent:this.timeFilter.drift*100,syncErrorMs:this.currentSyncErrorMs,resyncCount:this.resyncCount,outputLatencyMs:this.latencyTracker.getRawUs(this.audioContext)/1e3+this.unreportedOutputLatencySec*1e3,playbackRate:this.currentPlaybackRate,correctionMethod:this.currentCorrectionMethod,samplesAdjusted:this.lastSamplesAdjusted,correctionMode:this._correctionMode}}emitStatusLog(t){if(this._lastStatusLogMs!==0&&t-this._lastStatusLogMs<1e4)return;this._lastStatusLogMs=t;let e;switch(this.currentCorrectionMethod){case"rate":e=`rate@${this.currentPlaybackRate}`;break;case"samples":e=`samples:${this.lastSamplesAdjusted}`;break;default:e=this.currentCorrectionMethod}let A=this.audioBufferQueue.length+this.scheduledSources.length,s=this.audioContext?this.getScheduledAheadSec(this.audioContext.currentTime):0,n;this.clockSource.timestampPromotionDisabled?n="estimated(cast-disabled)":this.clockSource.active==="timestamp"?n=`timestamp(good:${this.clockSource.timestampGoodSamples})`:this.clockSource.lastRejectReason?n=`estimated(reject:"${this.clockSource.lastRejectReason}")`:n="estimated";let r=this.timeFilter.is_synchronized?`synced(err=${(this.timeFilter.error/1e3).toFixed(1)}ms,drift=${this.timeFilter.drift.toFixed(3)},n=${this.timeFilter.count})`:`pending(n=${this.timeFilter.count})`,o=this.latencyTracker.getSmoothedUs(this.audioContext),a=Math.round(o/1e3+this.unreportedOutputLatencySec*1e3);console.log(`Sendspin: sync=${this.smoothedSyncErrorMs>=0?"+":""}${this.smoothedSyncErrorMs.toFixed(1)}ms corr=${e} q=${A}/${s.toFixed(1)}s resyncs=${this._intervalResyncCount} clock=${n} tf=${r} lat=${a}ms mode=${this._correctionMode} ctx=${this.audioContext?.state??"null"} gen=${this.stateManager.streamGeneration}`),this._intervalResyncCount=0}applySyncErrorEma(t){return this.currentSyncErrorMs=t,this.smoothedSyncErrorMs=mr*t+(1-mr)*this.smoothedSyncErrorMs,this.smoothedSyncErrorMs}resetSyncErrorEma(){this.smoothedSyncErrorMs=0}copyBuffer(t){if(!this.audioContext)return t;let e=this.audioContext.createBuffer(t.numberOfChannels,t.length,t.sampleRate);for(let A=0;A<t.numberOfChannels;A++)e.getChannelData(A).set(t.getChannelData(A));return e}adjustBufferSamples(t,e){if(!this.audioContext||e===0||t.length<2)return this.copyBuffer(t);let A=t.numberOfChannels,s=t.length,n=t.sampleRate;try{if(e>0){let r=this.audioContext.createBuffer(A,s+1,n);for(let o=0;o<A;o++){let a=t.getChannelData(o),c=r.getChannelData(o);c[0]=a[0];let l=(a[0]+a[1])/2;c[1]=l,c.set(a.subarray(1),2);for(let h=0;h<Yt;h++){let d=2+h;if(d>=c.length)break;let u=Ns[h];c[d]=c[d]*(1-u)+l*u}}return r}else{let r=this.audioContext.createBuffer(A,s-1,n);for(let o=0;o<A;o++){let a=t.getChannelData(o),c=r.getChannelData(o);c.set(a.subarray(0,s-2));let l=(a[s-2]+a[s-1])/2;c[s-2]=l;for(let h=0;h<Yt;h++){let d=s-3-h;if(d<0)break;let u=Ns[h];c[d]=c[d]*(1-u)+l*u}}return r}}catch(r){return console.error("Sendspin: adjustBufferSamples error:",r),t}}initAudioContext(){if(this.audioContext)return;this.outputMode==="media-element"&&this.ownsAudioElement&&(this.audioElement=document.createElement("audio"),this.audioElement.style.display="none",document.body.appendChild(this.audioElement)),navigator.audioSession&&(navigator.audioSession.type="playback");let t=this.stateManager.currentStreamFormat?.sample_rate||48e3;this.audioContext=new AudioContext({sampleRate:t}),this.gainNode=this.audioContext.createGain();let e=this.audioElement;if(this.outputMode==="direct")this.gainNode.connect(this.audioContext.destination);else{if(!e)throw new Error("Media-element output requires an audio element.");this.isAndroid&&this.silentAudioSrc?(this.gainNode.connect(this.audioContext.destination),e.src=this.silentAudioSrc,e.loop=!0,e.muted=!1,e.volume=1,e.play().catch(A=>{console.warn("Sendspin: Audio autoplay blocked:",A)})):(this.streamDestination=this.audioContext.createMediaStreamDestination(),this.gainNode.connect(this.streamDestination),e.srcObject=this.streamDestination.stream,e.volume=1,e.play().catch(A=>{console.warn("Sendspin: Audio autoplay blocked:",A)}))}this.updateVolume(),this.usesRecorrectionMonitor&&this.recorrectionMonitor.start()}async resumeAudioContext(){this.audioContext&&this.audioContext.state==="suspended"&&(await this.audioContext.resume(),console.log("Sendspin: AudioContext resumed"),this.audioBufferQueue.length>0&&this.scheduleQueueProcessing(),this.usesRecorrectionMonitor&&this.recorrectionMonitor.start())}cutScheduledSources(t){if(!this.audioContext)return{requeuedCount:0,cutCount:0,keptTailEndTimeSec:0};let e=Math.max(t,this.audioContext.currentTime),A=0,s=0,n=0;return this.scheduledSources=this.scheduledSources.filter(r=>{if(r.startTime<e)return n=Math.max(n,r.endTime),!0;try{r.source.onended=null,r.source.stop(e)}catch{}return this.audioBufferQueue.push({buffer:r.buffer,serverTime:r.serverTime,generation:r.generation}),A++,s++,!1}),A>0&&this.audioBufferQueue.sort((r,o)=>r.serverTime-o.serverTime),{requeuedCount:A,cutCount:s,keptTailEndTimeSec:n}}updateVolume(){if(!this.gainNode)return;if(this.useHardwareVolume){this.gainNode.gain.value=1;return}let t=this.stateManager.muted?0:Za(this.stateManager.volume);this.audioContext?this.gainNode.gain.setTargetAtTime(t,this.audioContext.currentTime,qa):this.gainNode.gain.value=t}measureBufferedPlaybackRunwaySec(){if(!this.audioContext)return 0;let t=this.audioContext.currentTime;this.pruneExpiredScheduledSources(t);let e=this.getScheduledAheadSec(t),A=this.audioBufferQueue.reduce((s,n)=>s+n.buffer.duration,0);return Math.max(0,e+A)}cancelScheduledRefill(){this.refillTimeout!==null&&(clearTimeout(this.refillTimeout),this.refillTimeout=null)}getScheduledRefillThresholdSec(t){return Math.max(Ka,Math.min(Ga,t*Fa))}scheduleQueueRefill(t){if(this.cancelScheduledRefill(),!this.audioContext||this.audioContext.state!=="running"||!this.stateManager.isPlaying||this.audioBufferQueue.length===0)return;let e=this.audioContext.currentTime;this.pruneExpiredScheduledSources(e);let A=this.getScheduledAheadSec(e),s=this.getScheduledRefillThresholdSec(t);if(A<=s){this.scheduleQueueProcessing();return}let n=(A-s)*1e3,r=()=>{this.refillTimeout=null,!(!this.audioContext||this.audioContext.state!=="running"||!this.stateManager.isPlaying||this.audioBufferQueue.length===0)&&this.scheduleQueueProcessing()};if(typeof globalThis.setTimeout=="function"){this.refillTimeout=globalThis.setTimeout(r,n);return}if(this.refillTimeout=null,typeof globalThis.queueMicrotask=="function"){globalThis.queueMicrotask(r);return}Promise.resolve().then(r)}scheduleQueueProcessing(){if(this.cancelScheduledRefill(),this.queueProcessScheduled)return;if(this.queueProcessScheduled=!0,typeof globalThis.setTimeout=="function"){this.scheduleTimeout=globalThis.setTimeout(()=>{this.scheduleTimeout=null,this.queueProcessScheduled=!1,this.processAudioQueue()},15);return}let t=()=>{this.queueProcessScheduled=!1,this.processAudioQueue()};typeof globalThis.queueMicrotask=="function"?globalThis.queueMicrotask(t):Promise.resolve().then(t)}handleDecodedChunk(t){if(!this.audioContext||!this.gainNode){console.warn("Sendspin: Received audio chunk but no audio context");return}if(t.generation!==this.stateManager.streamGeneration)return;let e=t.samples.length,A=t.samples[0].length,s=this.audioContext.createBuffer(e,A,t.sampleRate);for(let n=0;n<e;n++)s.getChannelData(n).set(t.samples[n]);this.audioBufferQueue.push({buffer:s,serverTime:t.serverTimeUs,generation:t.generation}),this.scheduleQueueProcessing()}processAudioQueue(){if(this.cancelScheduledRefill(),!this.audioContext||!this.gainNode||this.audioContext.state!=="running")return;let t=this.stateManager.streamGeneration;if(this.audioBufferQueue=this.audioBufferQueue.filter(l=>l.generation===t),this.audioBufferQueue.sort((l,h)=>l.serverTime-h.serverTime),!this.timeFilter.is_synchronized)return;let e=this.measurePlayoutLatencySec(),{audioContextTimeSec:A,audioContextRawTimeSec:s,nowMs:n,nowUs:r}=this.clockSource.getTimingSnapshot(this.audioContext,this.contextTimeAtRenderPosition?0:e);this.pruneExpiredScheduledSources(s);let o=this.useOutputLatencyCompensation?e:0,a=this.syncDelayMs/1e3+this.unreportedOutputLatencySec,c=this.getTargetScheduledHorizonSec();if(this.usesRecorrectionMonitor&&this.recorrectionMonitor.start(),this.clockSource.pendingCutover&&(this.clockSource.pendingCutover=!1,this.scheduledSources.length>0||this.nextPlaybackTime!==0||this.lastScheduledServerTime!==0)){this.performGuardedCutover("delay-change",{incrementResyncCount:!1,markCooldown:!1});return}for(;this.audioBufferQueue.length>0;){let l=this.getScheduledAheadSec(s);if(this.nextPlaybackTime>0&&l>=c)break;let h=this.audioBufferQueue.shift(),d,u,p,f=0,m=this.computeTargetPlaybackTime(h.serverTime,A,r,o),g=this.clockSource.active==="timestamp";if(this.nextPlaybackTime===0||this.lastScheduledServerTime===0){this.recorrectionMonitor.armStartupGrace(n,g),d=m,u=d-a;let v=this.recorrectionMonitor.minScheduleTimeSec;if(v!==null){if(u+h.buffer.duration<=v)continue;f=Math.max(0,v-u),u+=f,d+=f}this.recorrectionMonitor.clearMinScheduleTime(),p=1}else{let S=(h.serverTime-this.lastScheduledServerTime)/1e6;if(Math.abs(S)<.1){let $=(this.nextPlaybackTime-m)*1e3,C=this.applySyncErrorEma($),k=this.correctionThresholds[this._correctionMode],I=this.recorrectionMonitor.canUseHardResync(n,g);if(Math.abs(C)>k.resyncAboveMs&&I)this.recorrectionMonitor.noteHardResync(n),this.resyncCount++,this._intervalResyncCount++,this.resetSyncErrorEma(),this.cutScheduledSources(m-a),d=m,u=d-a,p=1,this.currentCorrectionMethod="resync",this.lastSamplesAdjusted=0;else if(Math.abs(C)>k.resyncAboveMs)d=this.nextPlaybackTime,u=this.nextScheduleTime,p=Number.isFinite(k.rate2AboveMs)?C>0?1+$A:1-$A:1,this.currentCorrectionMethod=p===1?"none":"rate",this.lastSamplesAdjusted=0;else if(Math.abs(C)<k.deadbandBelowMs)d=this.nextPlaybackTime,u=this.nextScheduleTime,p=1,this.currentCorrectionMethod="none",this.lastSamplesAdjusted=0;else if(Math.abs(C)<=k.samplesBelowMs){d=this.nextPlaybackTime,u=this.nextScheduleTime,p=1;let D=C>0?-1:1;h.buffer=this.adjustBufferSamples(h.buffer,D),this.currentCorrectionMethod="samples",this.lastSamplesAdjusted=D}else{d=this.nextPlaybackTime,u=this.nextScheduleTime;let D=Math.abs(C);C>0?p=D>=k.rate2AboveMs?1+$A:D>=k.rate1AboveMs?1+fr:1:p=D>=k.rate2AboveMs?1-$A:D>=k.rate1AboveMs?1-fr:1,this.currentCorrectionMethod=p===1?"none":"rate",this.lastSamplesAdjusted=0}}else this.recorrectionMonitor.canUseHardResync(n,g)&&(this.recorrectionMonitor.noteHardResync(n),this.resyncCount++,this._intervalResyncCount++,this.cutScheduledSources(m-a)),d=m,u=d-a,p=1,this.currentCorrectionMethod="resync",this.lastSamplesAdjusted=0}if(this.currentPlaybackRate=p,u<s){this.nextPlaybackTime=0,this.nextScheduleTime=0,this.lastScheduledServerTime=0;continue}let _=this.audioContext.createBufferSource();_.buffer=h.buffer,_.playbackRate.value=p,_.connect(this.gainNode),_.start(u,f);let x=(h.buffer.duration-f)/p;this.nextPlaybackTime=d+x,this.nextScheduleTime=u+x,this.lastScheduledServerTime=h.serverTime+h.buffer.duration*1e6;let b={source:_,startTime:u,endTime:u+x,buffer:h.buffer,serverTime:h.serverTime,generation:h.generation};this.scheduledSources.push(b),_.onended=()=>{let v=this.scheduledSources.indexOf(b);v>-1&&this.scheduledSources.splice(v,1),this.scheduledSources.length===0&&(this.resetScheduledPlaybackState("all scheduled audio ended"),this.audioBufferQueue.length>0&&this.processAudioQueue())}}this.scheduleQueueRefill(c),this.emitStatusLog(n)}computeTargetPlaybackTime(t,e,A,s){let r=(this.timeFilter.computeClientTime(t)-A)/1e6;return e+r-s}startAudioElement(){this.outputMode==="media-element"&&this.audioElement?.paused&&this.audioElement.play().catch(t=>{console.warn("Sendspin: Failed to start audio element:",t)})}stopAudioElement(){this.outputMode==="media-element"&&this.audioElement&&!this.audioElement.paused&&this.audioElement.pause()}clearBuffers(){this.recorrectionMonitor.fullReset(),this.cancelScheduledRefill(),this.scheduledSources.forEach(t=>{try{t.source.stop()}catch{}}),this.scheduledSources=[],this.audioBufferQueue=[],this.scheduleTimeout!==null&&(clearTimeout(this.scheduleTimeout),this.scheduleTimeout=null),this.queueProcessScheduled=!1,this.stateManager.resetStreamAnchors(),this.resetScheduledPlaybackState(),this.resyncCount=0,this.latencyTracker.reset(),this.clockSource.reset()}stop(){this.clearBuffers(),this.stopAudioElement()}close(){this.clearBuffers(),this.audioContext&&(this.audioContext.close(),this.audioContext=null),this.gainNode=null,this.streamDestination=null,this.outputMode==="media-element"&&this.audioElement&&(this.audioElement.pause(),this.audioElement.srcObject=null,this.audioElement.loop=!1,this.audioElement.removeAttribute("src"),this.audioElement.load(),this.ownsAudioElement&&(this.audioElement.remove(),this.audioElement=void 0))}getAudioContext(){return this.audioContext}};var yr="data:audio/flac;base64,ZkxhQwAAACICQAJAAAAMAADIAfQBcAAHkwCKnZ7FLvzY30lWx+3k6wJCBAAALAwAAABMYXZmNjEuNy4xMDABAAAAFAAAAGVuY29kZXI9TGF2ZjYxLjcuMTAwgQAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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kkkkkkmSSSSSTJJJJJMkkkkySSSTJJJJMkkkk/+/+//f/7//9////////////z///z//8///P//n//+SSSSSSSSSSSSQkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkmSSSSSSSSSSSSSSST////+BVP//gkDBPnQAAAAOc/VEAP/////9//////////////////z////////+f/////////////////////////////////3///////////////////////////gAhn//gkDBTyQP///+c/y0Af/////5//////////////////////////////////v/////////////////////////////////P////////////////////+T8L/+CQMFfVAAAAA5z9xQB////////////3//////////////////////////////////+f///////////////////////////////////////////////gm0f/4JAwW/EAAAADnP9JAH///////7///////////////////////////////////////////////n///////////////////////////////////////+BEl//gkDBf7AAAAABAL//gkDBjWAAAAADVc//gkDBnRAAAAAEw0//gkDBrYAAAAAMeM//gkDBvfAAAAAL7k//gkDBzKAAAAAFD5//gkDB3NAAAAACmR//gkDB7EAAAAAKIp//gkDB/DAAAAANtB//gkDCB+AAAAAMWl//gkDCF5AAAAALzN//gkDCJwAAAAADd1//gkDCN3AAAAAE4d//gkDCRiAAAAAKAA//gkDCVlAAAAANlo//gkDCZsAAAAAFLQ//gkDCdrAAAAACu4//gkDChGAAAAAA7v//gkDClBAAAAAHeH//gkDCpIAAAAAPw///gkDCtPAAAAAIVX//gkDCxaAAAAAGtK//gkDC1dAAAAABIi//gkDC5UAAAAAJma//gkDC9TAAAAAODy//gkDDAOAAAAANM0//gkDDEJAAAAAKpc//gkDDIAAAAAACHk//gkDDMHAAAAAFiM//gkDDQSAAAAALaR//gkDDUVAAAAAM/5//gkDDYcAAAAAERB//gkDDcbAAAAAD0p//gkDDg2AAAAABh+//gkDDkxAAAAAGEW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";var _r;(function(i){i.CLIENT_HELLO="client/hello",i.SERVER_HELLO="server/hello",i.CLIENT_TIME="client/time",i.SERVER_TIME="server/time",i.CLIENT_STATE="client/state",i.SERVER_STATE="server/state",i.CLIENT_COMMAND="client/command",i.CLIENT_GOODBYE="client/goodbye",i.CLIENT_LEAVE="client/leave",i.SERVER_COMMAND="server/command",i.STREAM_START="stream/start",i.STREAM_CLEAR="stream/clear",i.STREAM_REQUEST_FORMAT="stream/request-format",i.STREAM_END="stream/end",i.GROUP_UPDATE="group/update",i.CLIENT_INIT="client/init",i.SERVER_INIT="server/init",i.NOISE_HANDSHAKE="noise/handshake",i.SERVER_ACTIVATE="server/activate",i.CLIENT_PAIR_PENDING="client/pair-pending",i.CLIENT_PAIR_INIT="client/pair-init",i.SERVER_PAIR_INIT="server/pair-init",i.SERVER_PAIR_AUTH="server/pair-auth",i.CLIENT_PAIR_AUTH="client/pair-auth",i.SERVER_PAIR_CONFIRM="server/pair-confirm",i.CLIENT_PAIR_RETRY="client/pair-retry",i.CLIENT_PAIR_CONFIRM="client/pair-confirm",i.CLIENT_PAIR_FINALIZE="client/pair-finalize",i.SERVER_PAIR_FINALIZE="server/pair-finalize",i.PAIR_ABORT="pair/abort",i.SERVER_UNPAIR="server/unpair"})(_r||(_r={}));function br(){return typeof navigator>"u"?!1:/Android/i.test(navigator.userAgent)}function ja(){return typeof navigator>"u"?!1:/iPad|iPhone|iPod/.test(navigator.userAgent)||navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1}function Ya(){return br()||ja()}function Wa(){return typeof navigator>"u"?!1:/CrKey/i.test(navigator.userAgent)}var Va=250,BA=class{constructor(t){this.ownsAudioElement=!1,this.disconnectPlaybackResetTimeout=null,this.suppressDisconnectPlaybackReset=!1;let e=br(),A=Wa(),s=Ya(),n=t.audioElement||s?"media-element":"direct";if(this.ownsAudioElement=n==="media-element"&&!t.audioElement,this.ownsAudioElement&&typeof document>"u")throw new Error("SendspinPlayer requires a DOM document to use media-element output without a provided audioElement.");let r=null;t.storage!==void 0?r=t.storage:typeof localStorage<"u"&&(r=localStorage),this.core=new Le({url:t.url,clientName:t.clientName,productName:t.productName,manufacturer:t.manufacturer,softwareVersion:t.softwareVersion,webSocket:t.webSocket,codecs:t.codecs,bufferCapacity:t.bufferCapacity,syncDelay:t.syncDelay,defaultSyncDelay:t.defaultSyncDelay,storage:r,requiredLeadTimeMs:t.requiredLeadTimeMs,minBufferMs:t.minBufferMs,useHardwareVolume:t.useHardwareVolume,onVolumeCommand:t.onVolumeCommand,onDelayCommand:t.onDelayCommand,getExternalVolume:t.getExternalVolume,reconnect:t.reconnect,onStateChange:t.onStateChange,onPairing:t.onPairing,onPairingCode:t.onPairingCode,pairingCodeOutChannels:t.pairingCodeOutChannels,pairingCodeFormats:t.pairingCodeFormats,staticPairingCode:t.staticPairingCode,staticPairingCodeLocations:t.staticPairingCodeLocations,pairingPskLocations:t.pairingPskLocations,suite:t.suite,unpairedAccess:t.unpairedAccess,longTermPsks:t.longTermPsks,applicationRoles:t.applicationRoles});let o=this.core.getSyncDelayMs();this.scheduler=new Oe({stateManager:this.core._stateManager,timeFilter:this.core._timeFilter,outputMode:n,audioElement:t.audioElement,isAndroid:e,isCastRuntime:A,ownsAudioElement:this.ownsAudioElement,silentAudioSrc:e?yr:void 0,syncDelayMs:o,useHardwareVolume:t.useHardwareVolume??!1,correctionMode:t.correctionMode??"sync",storage:r,useOutputLatencyCompensation:t.useOutputLatencyCompensation??!0,correctionThresholds:t.correctionThresholds}),this.core.onAudioData=a=>{this.scheduler.handleDecodedChunk(a)},this.core.onStreamStart=(a,c)=>{this.scheduler.initAudioContext(),this.scheduler.resumeAudioContext().catch(l=>{console.warn("Sendspin: Failed to resume AudioContext:",l)}),c||this.scheduler.clearBuffers(),this.scheduler.startAudioElement()},this.core.onStreamClear=()=>{this.scheduler.clearBuffers()},this.core.onStreamEnd=()=>{this.scheduler.clearBuffers(),this.scheduler.stopAudioElement()},this.core.onVolumeUpdate=()=>{this.scheduler.updateVolume()},this.core.onSyncDelayChange=a=>{this.scheduler.setSyncDelay(a)},this.core.onConnectionOpen=()=>{this.cancelPendingDisconnectPlaybackReset()},this.core.onConnectionClose=()=>{this.suppressDisconnectPlaybackReset||this.scheduleDisconnectPlaybackReset()}}cancelPendingDisconnectPlaybackReset(){this.disconnectPlaybackResetTimeout!==null&&(clearTimeout(this.disconnectPlaybackResetTimeout),this.disconnectPlaybackResetTimeout=null)}resetPlaybackStateAfterDisconnect(){this.disconnectPlaybackResetTimeout=null,!this.core.isConnected&&(this.scheduler.clearBuffers(),this.core.resetPlaybackState(),this.scheduler.stopAudioElement(),typeof navigator<"u"&&navigator.mediaSession&&(navigator.mediaSession.playbackState="paused"))}scheduleDisconnectPlaybackReset(){this.cancelPendingDisconnectPlaybackReset();let t=this.scheduler.measureBufferedPlaybackRunwaySec();if(t<=0){this.resetPlaybackStateAfterDisconnect();return}this.disconnectPlaybackResetTimeout=setTimeout(()=>{this.resetPlaybackStateAfterDisconnect()},t*1e3+Va)}async unlock(){this.scheduler.initAudioContext(),this.scheduler.startAudioElement(),await this.scheduler.resumeAudioContext()}async connect(){return this.suppressDisconnectPlaybackReset=!1,this.core.connect()}disconnect(t="user_request"){this.cancelPendingDisconnectPlaybackReset(),this.suppressDisconnectPlaybackReset=!0,this.core.disconnect(t),this.scheduler.stop(),typeof navigator<"u"&&navigator.mediaSession&&(navigator.mediaSession.playbackState="none",navigator.mediaSession.metadata=null)}destroy(t){this.disconnect(t),this.scheduler.close()}leaveGroup(){this.core.leaveGroup()}setVolume(t){this.core.setVolume(t)}setMuted(t){this.core.setMuted(t)}setSyncDelay(t){this.core.setSyncDelay(t)}setRequiredLeadTimeMs(t){this.core.setRequiredLeadTimeMs(t)}setMinBufferMs(t){this.core.setMinBufferMs(t)}setCorrectionMode(t){this.scheduler.setCorrectionMode(t)}sendCommand(t,e){this.core.sendCommand(t,e)}get isPlaying(){return this.core.isPlaying}get volume(){return this.core.volume}get muted(){return this.core.muted}get playerState(){return this.core.playerState}get currentFormat(){return this.core.currentFormat}get isConnected(){return this.core.isConnected}get clientId(){return this.core.clientId}get pairingToken(){return this.core.pairingToken}rotatePairingPsk(){return this.core.rotatePairingPsk()}openPairingWindow(){this.core.openPairingWindow()}cancelPairing(){this.core.cancelPairing()}releasePairingHold(){this.core.releasePairingHold()}isRoundLimitReached(){return this.core.isRoundLimitReached()}get correctionMode(){return this.scheduler.correctionMode}get timeSyncInfo(){return this.core.timeSyncInfo}getCurrentServerTimeUs(){return this.core.getCurrentServerTimeUs()}get trackProgress(){return this.core.trackProgress}get syncInfo(){return this.scheduler.syncInfo}};var Ys="1.3.0",nt="ipad-dashboard-card",Fs="ipad-dashboard-card-editor",oe="ipad_dashboard_card",ze={de:{tab_overview:"\xDCbersicht",tab_weather:"Wetter",tab_transit:"Verkehr",tab_shopping:"Einkaufen",tab_home:"Zuhause",tab_clock:"Uhr",tab_music:"Musik",mu_paused:"Pausiert",mu_off:"Aus",mu_idle:"Bereit",mu_no_rooms:"Keine R\xE4ume konfiguriert. R\xE4ume unter music_rooms mit name und entity eintragen.",mu_playlists:"Playlists",mu_pl_search:"Playlist suchen \u2026",mu_pl_loading:"Playlists werden geladen \u2026",mu_pl_error:"Playlists konnten nicht geladen werden.",mu_pl_empty:"Keine Playlists gefunden.",mu_pl_playing:(i,t)=>`\u201E${i}\u201C l\xE4uft in ${t}`,ss_tap:"Tippen, um Ton zu aktivieren",ss_this_ipad:i=>`Dieses iPad (\u201E${i}\u201C)`,ss_connected:"verbunden",ss_connecting:"verbindet \u2026",ss_reconnecting:"verbindet neu \u2026",ss_error:"Fehler",ss_off:"aus",ss_pair:"Kopplungscode f\xFCr Music Assistant",weather:"Wetter",shopping:"Einkaufsliste",departures:"Abfahrten",floorplan:"Zuhause",floorplan_hint:"Grundriss-Bild unter floorplan \u2192 image angeben, z. B. /local/grundriss.png",add_placeholder:"Artikel hinzuf\xFCgen \u2026",add:"Hinzuf\xFCgen",empty_list:"Alles erledigt \u2013 die Liste ist leer.",recent:"Zuletzt gekauft",no_departures:"Keine Abfahrten verf\xFCgbar.",not_found:"Entit\xE4t nicht gefunden",not_configured:"Nicht konfiguriert",now:"jetzt",now_hour:"Jetzt",min:"min",today:"Heute",tomorrow:"Morgen",high:"H",low:"T",hourly:"St\xFCndliche Vorhersage",hours24:"N\xE4chste 24 Stunden",daily:i=>`${i}-Tage-Vorhersage`,cancelled:"f\xE4llt aus",on_time:"p\xFCnktlich",platform:"Gl.",items:i=>i===1?"1 Artikel":`${i} Artikel`,more:i=>`+ ${i} weitere`,unavailable:"nicht verf\xFCgbar",edit_item:"Artikel bearbeiten",item_name:"Artikel",item_spec:"Menge / Notiz",item_spec_placeholder:"z. B. 2 Liter, Bio \u2026",save:"Speichern",delete:"L\xF6schen",done:"Erledigt",cancel:"Abbrechen",undo:"R\xFCckg\xE4ngig",completed_toast:i=>`\u201E${i}\u201C erledigt`,added_toast:i=>`\u201E${i}\u201C hinzugef\xFCgt`,approach:"Anfahrt",leave_in:i=>`Loslaufen in ${i} min`,leave_now:"Jetzt loslaufen",too_late:"Nicht mehr erreichbar",realtime:"Echtzeit",line:"Linie",destination:"Ziel",departure:"Abfahrt",all:"Alle",planned:"Plan",disruption:"St\xF6rung",updated:i=>`Stand ${i}`,next_trains:"N\xE4chste Fahrten",feels_like:"Gef\xFChlt",humidity:"Luftfeuchtigkeit",dew_point:i=>`Taupunkt ${i}`,wind:"Wind",gusts:i=>`B\xF6en ${i}`,pressure:"Luftdruck",visibility:"Sichtweite",uv:"UV-Index",uv_levels:["Niedrig","M\xE4\xDFig","Hoch","Sehr hoch","Extrem"],clouds:"Bew\xF6lkung",sun:"Sonne",sunrise:"Aufgang",sunset:"Untergang",precipitation:"Niederschlag",today_total:"heute",compass:["N","NO","O","SO","S","SW","W","NW"],sort_az:"A\u2013Z",sort_list:"Liste",shop_hint:"Antippen = erledigt \xB7 Lange dr\xFCcken oder \u270E = bearbeiten",suggestions:"Vorschl\xE4ge",favorites:"Favoriten",quick_add:"Schnell hinzuf\xFCgen",lights_on:i=>i===1?"1 an":`${i} an`,devices:"Ger\xE4te",no_devices:"Noch keine Ger\xE4te eingerichtet. Lichter sp\xE4ter unter floorplan \u2192 rooms oder home_entities eintragen.",alarms:"Wecker",timers:"Timer",stopwatch:"Stoppuhr",add_alarm:"Wecker hinzuf\xFCgen",edit_alarm:"Wecker",no_alarms:"Keine Wecker gestellt.",alarm_label:"Bezeichnung",alarm_label_placeholder:"z. B. Aufstehen",time:"Uhrzeit",repeat:"Wiederholen",once:"Einmalig",daily_rep:"T\xE4glich",weekdays:"Werktags",weekend:"Wochenende",days_short:["Mo","Di","Mi","Do","Fr","Sa","So"],next_alarm:"N\xE4chster Wecker",in_time:(i,t)=>i?`in ${i} Std. ${t} Min.`:`in ${t} Min.`,snooze:i=>`Schlummern (${i} min)`,stop:"Stopp",start:"Start",lap:"Runde",reset:"Zur\xFCcksetzen",resume:"Weiter",timer_done:"Timer abgelaufen",alarm_ringing:"Wecker",custom_min:"Minuten",no_timers:"Kein Timer aktiv.",alarm_note:"Klingelt, solange dieses Dashboard ge\xF6ffnet und der Bildschirm an ist."},en:{tab_overview:"Overview",tab_weather:"Weather",tab_transit:"Transit",tab_shopping:"Shopping",tab_home:"Home",tab_clock:"Clock",tab_music:"Music",mu_paused:"Paused",mu_off:"Off",mu_idle:"Idle",mu_no_rooms:"No rooms configured. Add rooms under music_rooms with name and entity.",mu_playlists:"Playlists",mu_pl_search:"Search playlists \u2026",mu_pl_loading:"Loading playlists \u2026",mu_pl_error:"Playlists could not be loaded.",mu_pl_empty:"No playlists found.",mu_pl_playing:(i,t)=>`\u201C${i}\u201D playing in ${t}`,ss_tap:"Tap to enable sound",ss_this_ipad:i=>`This iPad (\u201C${i}\u201D)`,ss_connected:"connected",ss_connecting:"connecting \u2026",ss_reconnecting:"reconnecting \u2026",ss_error:"error",ss_off:"off",ss_pair:"Pairing code for Music Assistant",weather:"Weather",shopping:"Shopping list",departures:"Departures",floorplan:"Home",floorplan_hint:"Set a floor plan image under floorplan \u2192 image, e.g. /local/floorplan.png",add_placeholder:"Add item \u2026",add:"Add",empty_list:"All done \u2013 the list is empty.",recent:"Recently bought",no_departures:"No departures available.",not_found:"Entity not found",not_configured:"Not configured",now:"now",now_hour:"Now",min:"min",today:"Today",tomorrow:"Tomorrow",high:"H",low:"L",hourly:"Hourly forecast",hours24:"Next 24 hours",daily:i=>`${i}-day forecast`,cancelled:"cancelled",on_time:"on time",platform:"Pl.",items:i=>i===1?"1 item":`${i} items`,more:i=>`+ ${i} more`,unavailable:"unavailable",edit_item:"Edit item",item_name:"Item",item_spec:"Amount / note",item_spec_placeholder:"e.g. 2 litres, organic \u2026",save:"Save",delete:"Delete",done:"Done",cancel:"Cancel",undo:"Undo",completed_toast:i=>`\u201C${i}\u201D done`,added_toast:i=>`\u201C${i}\u201D added`,approach:"Approaching",leave_in:i=>`Leave in ${i} min`,leave_now:"Leave now",too_late:"Not reachable anymore",realtime:"Real time",line:"Line",destination:"Destination",departure:"Departs",all:"All",planned:"Sched.",disruption:"Disruption",updated:i=>`Updated ${i}`,next_trains:"Next trips",feels_like:"Feels like",humidity:"Humidity",dew_point:i=>`Dew point ${i}`,wind:"Wind",gusts:i=>`Gusts ${i}`,pressure:"Pressure",visibility:"Visibility",uv:"UV index",uv_levels:["Low","Moderate","High","Very high","Extreme"],clouds:"Cloud cover",sun:"Sun",sunrise:"Sunrise",sunset:"Sunset",precipitation:"Precipitation",today_total:"today",compass:["N","NE","E","SE","S","SW","W","NW"],sort_az:"A\u2013Z",sort_list:"List",shop_hint:"Tap = done \xB7 Long press or \u270E = edit",suggestions:"Suggestions",favorites:"Favourites",quick_add:"Quick add",lights_on:i=>`${i} on`,devices:"Devices",no_devices:"No devices yet. Add lights later under floorplan \u2192 rooms or home_entities.",alarms:"Alarms",timers:"Timers",stopwatch:"Stopwatch",add_alarm:"Add alarm",edit_alarm:"Alarm",no_alarms:"No alarms set.",alarm_label:"Label",alarm_label_placeholder:"e.g. Wake up",time:"Time",repeat:"Repeat",once:"Once",daily_rep:"Every day",weekdays:"Weekdays",weekend:"Weekends",days_short:["Mo","Tu","We","Th","Fr","Sa","Su"],next_alarm:"Next alarm",in_time:(i,t)=>i?`in ${i} h ${t} min`:`in ${t} min`,snooze:i=>`Snooze (${i} min)`,stop:"Stop",start:"Start",lap:"Lap",reset:"Reset",resume:"Resume",timer_done:"Timer finished",alarm_ringing:"Alarm",custom_min:"Minutes",no_timers:"No timer running.",alarm_note:"Rings while this dashboard is open and the screen is on."}},Ks=[{id:"overview",icon:"mdi:view-dashboard-outline"},{id:"weather",icon:"mdi:weather-partly-cloudy"},{id:"transit",icon:"mdi:subway-variant"},{id:"shopping",icon:"mdi:cart-outline"},{id:"home",icon:"mdi:home-outline"},{id:"music",icon:"mdi:music"}],wr={de:{"clear-night":"Klar",cloudy:"Bew\xF6lkt",exceptional:"Unwetter",fog:"Nebel",hail:"Hagel",lightning:"Gewitter","lightning-rainy":"Gewitter mit Regen",partlycloudy:"Teilweise bew\xF6lkt",pouring:"Starkregen",rainy:"Regen",snowy:"Schnee","snowy-rainy":"Schneeregen",sunny:"Sonnig",windy:"Windig","windy-variant":"Windig und bew\xF6lkt"},en:{"clear-night":"Clear",cloudy:"Cloudy",exceptional:"Exceptional",fog:"Fog",hail:"Hail",lightning:"Lightning","lightning-rainy":"Thunderstorms",partlycloudy:"Partly cloudy",pouring:"Heavy rain",rainy:"Rain",snowy:"Snow","snowy-rainy":"Sleet",sunny:"Sunny",windy:"Windy","windy-variant":"Windy, cloudy"}},xr={U1:"#7DAD4C",U2:"#DA421E",U3:"#16683D",U4:"#F0D722",U5:"#7E5330",U6:"#8C6DAB",U7:"#528DBA",U8:"#224F86",U9:"#F3791D",S1:"#DE4DA4",S2:"#005F27",S25:"#005F27",S26:"#005F27",S3:"#0A4C99",S41:"#AD5937",S42:"#CB6418",S45:"#CD9C53",S46:"#CD9C53",S47:"#CD9C53",S5:"#EB7405",S7:"#816DA6",S75:"#816DA6",S8:"#66AA22",S85:"#66AA22",S9:"#992746"},Sr={BUS:"#95276E",TRAM:"#BE1414",SUBWAY:"#115D91",METRO:"#115D91",SUBURBAN:"#007734",FERRY:"#528DBA"},Xa=["times","departures","next_departures","connections","journeys","trips","data"],tc={line:["line","line_name","label","lineName","name","number","transport_line","route","servingLine"],destination:["destination","head_sign","headsign","direction","to","final_stop","dest","end_station"],time:["estimated","realtime_departure","realtimeDepartureTime","departure_realtime","expected","when","departure","departure_time","time","planned","plannedDepartureTime","scheduled","plannedWhen"],planned:["planned","plannedDepartureTime","scheduled","plannedWhen","departure_time_planned"],minutes:["minutes","departure_in","in","time_to_departure","countdown","min","in_min"],delay:["delay","delay_minutes","delayInMinutes","delay_departure"],platform:["track","platform","scheduled_track","gleis","stop_point"],cancelled:["cancelled","canceled","is_cancelled","cancel"],color:["color","line_color","background_color","lineBackgroundColor"],transport:["transport","transport_type","product","mode","type"],alerts:["alerts","alert","info","messages"]},vr=["#5b8bb5","#6f9e8a","#b0865b","#8a7bb0","#b56b6b","#5f9ea8","#a39a5b","#7f8fa8"],ec={areas:["clock weather dep","plan todo dep"],columns:"minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.05fr)",rows:"minmax(0, 0.82fr) minmax(0, 1fr)"},Xt={tabs:["overview","weather","transit","shopping","home"],default_tab:"overview",return_to_overview:0,max_departures:7,max_departures_detail:14,hide_below_minutes:0,walk_minutes:0,add_delay:!1,group_departures:!1,departure_style:"calm",show_approach:!0,approach_window:15,forecast_hours:5,forecast_days:10,weather_gradient:!0,show_completed:30,spec_separator:":",spec_suggestions:["2\xD7","3\xD7","500 g","1 kg","Bio","gro\xDF"],show_seconds:!1,snooze_minutes:9,alarm_ring_minutes:5,timer_presets:[1,3,5,10,15,30],playlist_limit:200,height:"calc(100vh - var(--header-height, 56px) - 16px)"},y=i=>String(i??"").replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t]),Gs=(i,t)=>{if(!(i==null||t==null))return String(t).split(".").reduce((e,A)=>e?.[A],i)},Ac=(i,t)=>{for(let e of t){let A=Gs(i,e);if(A!=null&&A!=="")return A}},sc=i=>{let t=0;for(let e=0;e<i.length;e++)t=t*31+i.charCodeAt(e)|0;return Math.abs(t)},ic=i=>{if(i==null||i==="")return null;if(typeof i=="number")return i;let t=String(i).trim();if(/^[+-]?\d+(\.\d+)?$/.test(t))return parseFloat(t);let e=t.match(/^(-)?(\d+):(\d{2})(?::(\d{2}))?$/);if(e){let s=+e[2]*60+ +e[3]+(e[4]?+e[4]/60:0);return e[1]?-s:s}let A=t.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);return A?(+A[1]||0)*60+(+A[2]||0)+(+A[3]||0)/60:null},PA=(i,t)=>{if(i==null||i==="")return null;if(typeof i=="number")return i>1e12?i:i>1e9?i*1e3:t+i*6e4;let e=String(i).trim();if(/^-?\d+(\.\d+)?$/.test(e))return PA(parseFloat(e),t);let A=e.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);if(A){let n=new Date(t);n.setHours(+A[1],+A[2],+(A[3]||0),0);let r=n.getTime();return r<t-6*36e5&&(r+=864e5),r}let s=Date.parse(e);return Number.isNaN(s)?null:s},nc=i=>{let t=String(i).trim().match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);if(!t)return null;let e=t[1];return e.length===3&&(e=e.replace(/./g,A=>A+A)),[0,2,4].map(A=>parseInt(e.slice(A,A+2),16))},rc=i=>{let t=nc(i);if(!t)return"#fff";let[e,A,s]=t.map(n=>(n/=255,n<=.03928?n/12.92:((n+.055)/1.055)**2.4));return .2126*e+.7152*A+.0722*s>.45?"#1a1a1a":"#fff"},Wt=[[-10,[94,140,255]],[0,[90,200,250]],[10,[120,210,160]],[18,[247,209,84]],[25,[245,158,66]],[32,[242,97,75]]],Hs=i=>{if(i<=Wt[0][0])return`rgb(${Wt[0][1]})`;for(let t=1;t<Wt.length;t++){let[e,A]=Wt[t],[s,n]=Wt[t-1];if(i<=e){let r=(i-s)/(e-s);return`rgb(${n.map((o,a)=>Math.round(o+(A[a]-o)*r))})`}}return`rgb(${Wt[Wt.length-1][1]})`},Mr="#FFC93C",qs="#EEF2F6",kr="#AEB7C2",oc="#58B4F5",ac="#E4E9F2",ae=(i=0,t=0,e=1,A=qs)=>`<g transform="translate(${i} ${t}) translate(32 40) scale(${e}) translate(-32 -40)" fill="${A}">
      <circle cx="21" cy="38" r="10"/><circle cx="34" cy="30" r="14"/><circle cx="46" cy="38" r="10"/>
-     <rect x="21" y="34" width="25" height="14"/></g>`;
-const svgSun = (cx = 32, cy = 32, r = 11) => {
-  const rays = [...Array(8)]
-    .map((_, i) => {
-      const a = (i * Math.PI) / 4;
-      const r1 = r + 4;
-      const r2 = r + 9;
-      return `<line x1="${cx + Math.cos(a) * r1}" y1="${cy + Math.sin(a) * r1}" x2="${cx + Math.cos(a) * r2}" y2="${cy + Math.sin(a) * r2}"/>`;
-    })
-    .join("");
-  return `<g stroke="${C_SUN}" stroke-width="3.4" stroke-linecap="round">${rays}</g><circle cx="${cx}" cy="${cy}" r="${r}" fill="${C_SUN}"/>`;
-};
-const svgMoon = (cx = 32, cy = 32, r = 15) =>
-  `<path fill="${C_MOON}" d="M${cx + r * 0.25} ${cy - r} a${r} ${r} 0 1 0 ${r * 0.75} ${r * 1.72} a${r * 0.95} ${r * 0.95} 0 0 1 -${r * 0.75} -${r * 1.72}z"/>`;
-const svgDrops = (xs, color = C_RAIN) =>
-  `<g stroke="${color}" stroke-width="3.2" stroke-linecap="round">${xs
-    .map((x) => `<line x1="${x}" y1="46" x2="${x - 3}" y2="55"/>`)
-    .join("")}</g>`;
-const svgFlakes = (xs) => `<g fill="#fff">${xs.map((x, i) => `<circle cx="${x}" cy="${i % 2 ? 55 : 49}" r="2.6"/>`).join("")}</g>`;
-const svgBolt = () => `<path fill="#FFD43B" d="M33 40 L25 53 H31 L28 62 L39 47 H33 L36 40 Z"/>`;
-
-const weatherSvg = (cond, night = false) => {
-  let body;
-  const up = (s = 1, fill) => svgCloud(0, -8, s, fill);
-  switch (cond) {
-    case "sunny":
-      body = night ? svgMoon() : svgSun();
-      break;
-    case "clear-night":
-      body = svgMoon();
-      break;
-    case "partlycloudy":
-      body = (night ? svgMoon(40, 22, 11) : svgSun(40, 22, 8)) + svgCloud(-4, 6, 0.9);
-      break;
-    case "cloudy":
-      body = svgCloud(8, -8, 0.72, C_CLOUD_DARK) + svgCloud(-3, 4, 0.92);
-      break;
-    case "rainy":
-      body = up() + svgDrops([24, 33, 42]);
-      break;
-    case "pouring":
-      body = up(1, "#C8D0DA") + svgDrops([20, 27, 34, 41, 48]);
-      break;
-    case "snowy":
-      body = up() + svgFlakes([22, 32, 42]);
-      break;
-    case "snowy-rainy":
-      body = up() + svgDrops([24, 40]) + svgFlakes([32]);
-      break;
-    case "hail":
-      body = up() + `<g fill="#DCE6F2"><circle cx="24" cy="51" r="3.2"/><circle cx="34" cy="56" r="3.2"/><circle cx="43" cy="50" r="3.2"/></g>`;
-      break;
-    case "lightning":
-      body = up(1, "#C8D0DA") + svgBolt();
-      break;
-    case "lightning-rainy":
-      body = up(1, "#C8D0DA") + svgBolt() + svgDrops([20, 46]);
-      break;
-    case "fog":
-      body =
-        up(1, C_CLOUD_DARK) +
-        `<g stroke="${C_CLOUD}" stroke-width="3.2" stroke-linecap="round"><line x1="14" y1="47" x2="50" y2="47"/><line x1="20" y1="54" x2="46" y2="54"/></g>`;
-      break;
-    case "windy":
-    case "windy-variant":
-      body =
-        (cond === "windy-variant" ? svgCloud(4, -12, 0.75) : "") +
-        `<g fill="none" stroke="${C_CLOUD}" stroke-width="3.4" stroke-linecap="round">
-           <path d="M8 36 H40 a6 6 0 1 0 -6 -6"/><path d="M8 44 H48 a6 6 0 1 1 -6 6"/><path d="M14 28 H26"/></g>`;
-      break;
-    case "exceptional":
-      body = `<path fill="#F5A524" d="M32 8 L58 54 H6 Z"/><rect x="29.5" y="24" width="5" height="16" rx="2.5" fill="#1b1b1b"/><circle cx="32" cy="46" r="3" fill="#1b1b1b"/>`;
-      break;
-    default:
-      body = svgCloud();
-  }
-  return `<svg viewBox="0 0 64 64" aria-hidden="true">${body}</svg>`;
-};
-
-const WEATHER_GRADIENTS = {
-  day_clear: ["#2c5f8f", "#1b3a5c"],
-  day_cloudy: ["#3a4654", "#242c36"],
-  day_rain: ["#2e3d4f", "#1b2430"],
-  day_snow: ["#46525f", "#2a323c"],
-  night_clear: ["#16213a", "#0c1222"],
-  night_cloudy: ["#1f2632", "#11161e"],
-};
-const gradientFor = (cond, night) => {
-  const group = ["sunny", "clear-night", "partlycloudy", "windy"].includes(cond)
-    ? "clear"
-    : ["rainy", "pouring", "lightning", "lightning-rainy", "hail", "exceptional"].includes(cond)
-      ? "rain"
-      : ["snowy", "snowy-rainy"].includes(cond)
-        ? "snow"
-        : "cloudy";
-  const key = night ? (group === "clear" ? "night_clear" : "night_cloudy") : `day_${group}`;
-  return WEATHER_GRADIENTS[key];
-};
-
-
-/* ----------------------------------------------------------------- style */
-
-const STYLE = `
+     <rect x="21" y="34" width="25" height="14"/></g>`,Cr=(i=32,t=32,e=11)=>{let A=[...Array(8)].map((s,n)=>{let r=n*Math.PI/4,o=e+4,a=e+9;return`<line x1="${i+Math.cos(r)*o}" y1="${t+Math.sin(r)*o}" x2="${i+Math.cos(r)*a}" y2="${t+Math.sin(r)*a}"/>`}).join("");return`<g stroke="${Mr}" stroke-width="3.4" stroke-linecap="round">${A}</g><circle cx="${i}" cy="${t}" r="${e}" fill="${Mr}"/>`},Qs=(i=32,t=32,e=15)=>`<path fill="${ac}" d="M${i+e*.25} ${t-e} a${e} ${e} 0 1 0 ${e*.75} ${e*1.72} a${e*.95} ${e*.95} 0 0 1 -${e*.75} -${e*1.72}z"/>`,zA=(i,t=oc)=>`<g stroke="${t}" stroke-width="3.2" stroke-linecap="round">${i.map(e=>`<line x1="${e}" y1="46" x2="${e-3}" y2="55"/>`).join("")}</g>`,Er=i=>`<g fill="#fff">${i.map((t,e)=>`<circle cx="${t}" cy="${e%2?55:49}" r="2.6"/>`).join("")}</g>`,Tr=()=>'<path fill="#FFD43B" d="M33 40 L25 53 H31 L28 62 L39 47 H33 L36 40 Z"/>',$e=(i,t=!1)=>{let e,A=(s=1,n)=>ae(0,-8,s,n);switch(i){case"sunny":e=t?Qs():Cr();break;case"clear-night":e=Qs();break;case"partlycloudy":e=(t?Qs(40,22,11):Cr(40,22,8))+ae(-4,6,.9);break;case"cloudy":e=ae(8,-8,.72,kr)+ae(-3,4,.92);break;case"rainy":e=A()+zA([24,33,42]);break;case"pouring":e=A(1,"#C8D0DA")+zA([20,27,34,41,48]);break;case"snowy":e=A()+Er([22,32,42]);break;case"snowy-rainy":e=A()+zA([24,40])+Er([32]);break;case"hail":e=A()+'<g fill="#DCE6F2"><circle cx="24" cy="51" r="3.2"/><circle cx="34" cy="56" r="3.2"/><circle cx="43" cy="50" r="3.2"/></g>';break;case"lightning":e=A(1,"#C8D0DA")+Tr();break;case"lightning-rainy":e=A(1,"#C8D0DA")+Tr()+zA([20,46]);break;case"fog":e=A(1,kr)+`<g stroke="${qs}" stroke-width="3.2" stroke-linecap="round"><line x1="14" y1="47" x2="50" y2="47"/><line x1="20" y1="54" x2="46" y2="54"/></g>`;break;case"windy":case"windy-variant":e=(i==="windy-variant"?ae(4,-12,.75):"")+`<g fill="none" stroke="${qs}" stroke-width="3.4" stroke-linecap="round">
+           <path d="M8 36 H40 a6 6 0 1 0 -6 -6"/><path d="M8 44 H48 a6 6 0 1 1 -6 6"/><path d="M14 28 H26"/></g>`;break;case"exceptional":e='<path fill="#F5A524" d="M32 8 L58 54 H6 Z"/><rect x="29.5" y="24" width="5" height="16" rx="2.5" fill="#1b1b1b"/><circle cx="32" cy="46" r="3" fill="#1b1b1b"/>';break;default:e=ae()}return`<svg viewBox="0 0 64 64" aria-hidden="true">${e}</svg>`},cc={day_clear:["#2c5f8f","#1b3a5c"],day_cloudy:["#3a4654","#242c36"],day_rain:["#2e3d4f","#1b2430"],day_snow:["#46525f","#2a323c"],night_clear:["#16213a","#0c1222"],night_cloudy:["#1f2632","#11161e"]},lc=(i,t)=>{let e=["sunny","clear-night","partlycloudy","windy"].includes(i)?"clear":["rainy","pouring","lightning","lightning-rainy","hail","exceptional"].includes(i)?"rain":["snowy","snowy-rainy"].includes(i)?"snow":"cloudy",A=t?e==="clear"?"night_clear":"night_cloudy":`day_${e}`;return cc[A]},X={PAUSE:1,SEEK:2,VOLUME_SET:4,VOLUME_MUTE:8,PREVIOUS_TRACK:16,NEXT_TRACK:32,TURN_ON:128,TURN_OFF:256,VOLUME_STEP:1024,STOP:4096,PLAY:16384,SHUFFLE_SET:32768,REPEAT_SET:262144},T={player:null,key:null,state:"off",info:null,unlocked:!1,pairingCode:null,listeners:new Set,users:0,releaseTimer:null,retryTimer:null},Pe=()=>{for(let i of T.listeners)try{i()}catch{}},ce=i=>{T.state=i,Pe()},Rr=()=>{let i=T.player;i&&(clearTimeout(T.retryTimer),ce("connecting"),Promise.resolve().then(()=>i.connect()).then(()=>{T.player===i&&(clearTimeout(T.retryTimer),ce("connected"))}).catch(t=>{T.player===i&&(console.warn(`[${nt}] Sendspin server not reachable yet, the player keeps retrying`,t),ce("reconnecting"),T.retryTimer=setTimeout(()=>{T.player===i&&!i.isConnected&&T.state!=="connected"&&Rr()},12e4))}))},Lr=()=>{clearTimeout(T.retryTimer),clearTimeout(T.releaseTimer);try{T.player?.destroy("shutdown")}catch{}Object.assign(T,{player:null,key:null,state:"off",info:null,pairingCode:null}),Pe()},dc=i=>{T.users++,clearTimeout(T.releaseTimer);let t=`${i.url}|${i.name}|${(i.codecs||[]).join()}`;if(T.player&&T.key===t)return;T.player&&Lr();let e=Array.isArray(i.codecs)&&i.codecs.length?i.codecs:["pcm"],A;try{A=new BA({url:i.url,clientName:i.name,productName:"iPad Dashboard Card",manufacturer:"Home Assistant",softwareVersion:Ys,codecs:e,reconnect:{baseDelayMs:1e3,maxDelayMs:15e3,onReconnecting:()=>T.player===A&&ce("reconnecting"),onReconnected:()=>{T.player===A&&(clearTimeout(T.retryTimer),ce("connected"))}},onStateChange:s=>{T.player===A&&(T.info=s,T.state!=="connected"&&A.isConnected&&(T.state="connected"),Pe())},onPairingCode:s=>{T.pairingCode=s||null,Pe()}})}catch(s){console.error(`[${nt}] Sendspin player could not be created`,s),ce("error");return}T.player=A,T.key=t,Rr()},hc=()=>{T.users=Math.max(0,T.users-1),!(T.users>0||!T.player)&&(clearTimeout(T.releaseTimer),T.releaseTimer=setTimeout(()=>T.users===0&&Lr(),3e4))},uc=`
   :host {
     --idc-bg: #0e1115;
     --idc-panel: #151a20;
@@ -978,12 +393,109 @@ const STYLE = `
   .lap { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--idc-border); font-size: 15px; font-variant-numeric: tabular-nums; color: var(--idc-muted); }
   .lap b { color: var(--idc-text); font-weight: 500; }
 
+
+  /* ---------- music */
+  .v-music { grid-template-rows: auto minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); }
+  .mu-top { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .mu-rooms { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .mu-rooms::-webkit-scrollbar { display: none; }
+  .mroom {
+    flex: 0 0 auto; width: 236px; display: flex; gap: 12px; align-items: center; text-align: left; padding: 10px;
+    background: var(--idc-panel); border: 1px solid var(--idc-border); border-radius: 16px; cursor: pointer; transition: border-color 0.2s, opacity 0.2s;
+  }
+  .mroom.sel { border-color: rgba(127,166,201,0.55); background: var(--idc-panel-2); }
+  .mroom.dim { opacity: 0.55; }
+  .mroom.dim.sel { opacity: 0.85; }
+  .mr-cover, .mu-cover-in { position: relative; flex: none; border-radius: 10px; overflow: hidden; background: var(--idc-panel-3); display: grid; place-items: center; }
+  .mr-cover { width: 64px; height: 64px; }
+  .mr-cover img, .mu-cover-in img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+  .mr-cover ha-icon { --mdc-icon-size: 26px; color: var(--idc-faint); }
+  .mr-txt { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .mr-name { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--idc-muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mr-t { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mr-a { font-size: 13px; color: var(--idc-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mr-app { align-self: flex-start; font-size: 11px; color: var(--idc-accent); background: rgba(127,166,201,0.12); border-radius: 6px; padding: 2px 6px; margin-top: 2px; letter-spacing: 0.02em; text-transform: none; font-weight: 600; }
+  .mr-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+  .mr-tags:empty { display: none; }
+  .mr-st { align-self: flex-start; font-size: 11px; color: var(--idc-muted); background: var(--idc-panel-3); border-radius: 6px; padding: 2px 6px; margin-top: 2px; font-weight: 600; letter-spacing: 0.02em; text-transform: none; }
+  .mu-room .mr-st { margin: 0; }
+  .eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 11px; }
+  .eq i { width: 3px; background: var(--idc-good); border-radius: 1px; animation: idc-eq 1s ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -0.3s; }
+  .eq i:nth-child(3) { animation-delay: -0.6s; }
+  @keyframes idc-eq { 0%, 100% { height: 3px; } 50% { height: 11px; } }
+  .mu-ss { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--idc-muted); padding: 0 4px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--idc-faint); flex: none; }
+  .dot.connected { background: var(--idc-good); }
+  .dot.connecting, .dot.reconnecting { background: var(--idc-warn); animation: idc-pulse 1.2s infinite; }
+  .dot.error { background: var(--idc-bad); }
+
+  .mu-main { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: center; padding: 24px 28px; }
+  .mu-main.with-pl { grid-template-columns: auto minmax(0, 1fr) minmax(0, 0.95fr); align-items: stretch; }
+  .mu-cover { align-self: center; }
+  .mu-cover-in { width: min(330px, 36vh); height: min(330px, 36vh); aspect-ratio: 1; border-radius: 18px; box-shadow: 0 16px 50px rgba(0,0,0,0.45); }
+  .with-pl .mu-cover-in { width: min(280px, 34vh); height: min(280px, 34vh); }
+  .mu-cover-in ha-icon { --mdc-icon-size: 72px; color: var(--idc-faint); }
+  .mu-info { min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+  .mu-room { font-size: 12.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--idc-muted); display: flex; align-items: center; gap: 8px; }
+  .mu-room .mr-app { margin: 0; }
+  .mu-title { font-size: 28px; font-weight: 600; line-height: 1.2; margin-top: 10px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .mu-artist { font-size: 19px; color: var(--idc-muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mu-album { font-size: 15px; color: var(--idc-faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 18px; }
+  .mu-progwrap { margin-top: 22px; }
+  .mu-prog { height: 6px; border-radius: 3px; background: var(--idc-panel-3); position: relative; padding: 10px 0; background-clip: content-box; }
+  .mu-prog.seek { cursor: pointer; }
+  .mu-prog i { position: absolute; left: 0; top: 10px; height: 6px; border-radius: 3px; background: var(--idc-text); }
+  .mu-times { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--idc-faint); font-variant-numeric: tabular-nums; margin-top: -4px; }
+  .mu-ctrls { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; }
+  .mbtn { width: 58px; height: 58px; border-radius: 50%; border: none; background: transparent; color: var(--idc-text); display: grid; place-items: center; cursor: pointer; flex: none; transition: background 0.15s; }
+  .mbtn:active { background: var(--idc-panel-3); }
+  .mbtn ha-icon { --mdc-icon-size: 34px; }
+  .mbtn.big { width: 76px; height: 76px; background: var(--idc-text); color: var(--idc-bg); }
+  .mbtn.big ha-icon { --mdc-icon-size: 42px; }
+  .mbtn.small { width: 48px; height: 48px; color: var(--idc-faint); }
+  .mbtn.small ha-icon { --mdc-icon-size: 24px; }
+  .mbtn.on { color: var(--idc-accent); }
+  .mbtn:disabled { opacity: 0.35; }
+  .mu-volrow { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
+  .mu-volrow .mbtn.small { color: var(--idc-muted); }
+  .mu-volrow .v { width: 30px; text-align: right; font-size: 13px; color: var(--idc-faint); font-variant-numeric: tabular-nums; }
+  input[type="range"].vol { flex: 1; min-width: 0; -webkit-appearance: none; appearance: none; height: 30px; background: transparent; margin: 0; }
+  input[type="range"].vol::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: var(--idc-panel-3); }
+  input[type="range"].vol::-moz-range-track { height: 6px; border-radius: 3px; background: var(--idc-panel-3); }
+  input[type="range"].vol::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; margin-top: -11px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+  input[type="range"].vol::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: none; }
+  .mu-pl { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--idc-border); padding-left: 22px; }
+  .mu-pl input { height: 40px; border-radius: 11px; border: 1px solid var(--idc-border); background: var(--idc-panel-2); color: var(--idc-text); font: inherit; font-size: 15px; padding: 0 12px; outline: none; margin-bottom: 8px; box-sizing: border-box; -webkit-appearance: none; flex: none; }
+  .pl { display: flex; align-items: center; gap: 12px; width: 100%; padding: 7px 6px; border: none; background: transparent; border-radius: 12px; cursor: pointer; text-align: left; }
+  .pl:active { background: var(--idc-panel-2); }
+  .pl-img { position: relative; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: var(--idc-panel-3); display: grid; place-items: center; flex: none; }
+  .pl-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .pl-img ha-icon { --mdc-icon-size: 22px; color: var(--idc-faint); }
+  .pl-t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .pl-t span { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pl-t small { font-size: 12.5px; color: var(--idc-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pl-play { --mdc-icon-size: 26px; color: var(--idc-faint); flex: none; }
+
+  .tb-ss { width: 40px; height: 40px; border-radius: 13px; border: 1px solid var(--idc-border); background: var(--idc-panel); display: grid; place-items: center; cursor: pointer; color: var(--idc-faint); }
+  .tb-ss ha-icon { --mdc-icon-size: 20px; }
+  .tb-ss.connected { color: var(--idc-good); }
+  .tb-ss.connecting, .tb-ss.reconnecting { color: var(--idc-warn); }
+  .tb-ss.error { color: var(--idc-bad); }
+  .ss-overlay { place-items: end center; padding: 0 0 26px; background: rgba(5, 7, 10, 0.35); backdrop-filter: none; -webkit-backdrop-filter: none; z-index: 30; cursor: pointer; }
+  .ss-pill { display: flex; align-items: center; gap: 10px; background: #222a33; border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 12px 20px; font-size: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+  .ss-pill ha-icon { --mdc-icon-size: 20px; color: var(--idc-accent); }
+  .ss-pair { position: absolute; right: 18px; bottom: 18px; z-index: 16; background: #222a33; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 12px 16px; font-size: 13.5px; color: var(--idc-muted); box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+  .ss-pair b { display: block; font-size: 28px; color: var(--idc-text); letter-spacing: 0.12em; font-variant-numeric: tabular-nums; margin-top: 4px; }
+
   /* ---------- narrow layouts (portrait / phone) */
   @container (max-width: 860px) {
     .v-overview { grid-template-columns: 1fr 1fr; grid-template-rows: auto auto minmax(300px, 1fr); grid-template-areas: "clock weather" "dep todo" "dep plan"; }
     .v-weather, .v-transit, .v-shopping, .v-home { grid-template-columns: 1fr; overflow-y: auto; }
     .v-clock { grid-template-columns: 1fr 1fr; }
     .tab span { display: none; }
+    .mu-main, .mu-main.with-pl { grid-template-columns: 1fr; overflow-y: auto; }
+    .mu-pl { border-left: none; padding-left: 0; min-height: 300px; }
   }
   @container (max-width: 560px) {
     .views { overflow-y: auto; }
@@ -992,202 +504,16 @@ const STYLE = `
     .v-overview > * { grid-area: auto !important; min-height: 240px; }
     .time { font-size: 64px; }
   }
-`;
-
-/* --------------------------------------------------------- more helpers */
-
-const pad2 = (n) => String(n).padStart(2, "0");
-const lsGet = (k, fallback) => {
-  try {
-    const v = localStorage.getItem(k);
-    return v ? JSON.parse(v) : fallback;
-  } catch (e) {
-    return fallback;
-  }
-};
-const lsSet = (k, v) => {
-  try {
-    localStorage.setItem(k, JSON.stringify(v));
-  } catch (e) {
-    /* storage unavailable */
-  }
-};
-const fmtDuration = (ms, cs = false) => {
-  const neg = ms < 0;
-  ms = Math.abs(ms);
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const c = Math.floor((ms % 1000) / 10);
-  const base = h ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
-  return (neg ? "−" : "") + base + (cs ? `,${pad2(c)}` : "");
-};
-const uid = () => Math.random().toString(36).slice(2, 10);
-const isOn = (s) => !!s && ["on", "open", "playing", "home", "unlocked", "heat", "cool"].includes(s.state);
-
-/* ------------------------------------------------------------------ card */
-
-class IpadDashboardCard extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this._subs = {};
-    this._subKeys = {};
-    this._items = null;
-    this._forecast = {};
-    this._pending = new Set();
-    this._last = {};
-    this._view = null;
-    this._trHidden = new Set(lsGet("idc_tr_hidden", []));
-    this._shSort = lsGet("idc_sh_sort", "list");
-    this._data = { alarms: [] };
-    this._fired = {};
-    this._snoozes = [];
-    this._timers = lsGet("idc_timers", []);
-    this._sw = lsGet("idc_stopwatch", { start: null, acc: 0, laps: [] });
-    this._lastInteraction = Date.now();
-  }
-
-  static getConfigElement() {
-    return document.createElement(EDITOR_TAG);
-  }
-
-  static getStubConfig(hass) {
-    const ids = Object.keys(hass?.states || {});
-    const todo = ids.filter((e) => e.startsWith("todo."));
-    return {
-      weather_entity: ids.find((e) => e.startsWith("weather.")) || "",
-      todo_entity: todo.find((e) => e.includes("bring")) || todo[0] || "",
-      departure_entities: [],
-    };
-  }
-
-  setConfig(config) {
-    if (!config || typeof config !== "object") throw new Error("Invalid configuration");
-    const deps = config.departure_entities ?? (config.departure_entity ? [config.departure_entity] : []);
-    if (!Array.isArray(deps)) throw new Error("departure_entities must be a list");
-    this._config = { ...DEFAULTS, ...config };
-    this._depConf = deps.map((d) => (typeof d === "string" ? { entity: d } : d)).filter((d) => d && d.entity);
-    const lists = [config.todo_entity, ...(config.todo_entities || [])].filter(Boolean);
-    this._lists = [...new Set(lists)];
-    if (!this._lists.includes(this._list)) this._list = this._lists[0];
-    const tabs = (Array.isArray(this._config.tabs) ? this._config.tabs : DEFAULTS.tabs).filter((t) => TABS.some((x) => x.id === t));
-    this._tabs = tabs.length ? tabs : ["overview"];
-    this._last = {};
-    this._built = false;
-    if (this._hass) this._update(true);
-  }
-
-  set hass(hass) {
-    const first = !this._hass;
-    this._hass = hass;
-    this._update(first);
-  }
-
-  get hass() {
-    return this._hass;
-  }
-
-  getCardSize() {
-    return 14;
-  }
-
-  getGridOptions() {
-    return { columns: "full", rows: "auto", min_columns: 12 };
-  }
-
-  connectedCallback() {
-    clearInterval(this._timer);
-    this._timer = setInterval(() => this._tick(), 1000);
-    if (this._hass && this._config) this._update(true);
-  }
-
-  disconnectedCallback() {
-    clearInterval(this._timer);
-    clearInterval(this._swTimer);
-    this._swTimer = null;
-    this._stopRing(true);
-    this._resizeObs?.disconnect();
-    for (const k of Object.keys(this._subs)) this._unsubscribe(k);
-  }
-
-  /* ---------- language / formatting */
-
-  get _lang() {
-    const l = (this._hass?.locale?.language || this._hass?.language || navigator.language || "de").toLowerCase();
-    return l.split("-")[0];
-  }
-  _t(key, ...args) {
-    const s = (STRINGS[this._lang] || STRINGS.en)[key] ?? STRINGS.en[key] ?? key;
-    return typeof s === "function" ? s(...args) : s;
-  }
-  get _timeZone() {
-    const loc = this._hass?.locale;
-    if (loc?.time_zone === "server" && this._hass?.config?.time_zone) return this._hass.config.time_zone;
-    return undefined;
-  }
-  get _hour12() {
-    const tf = this._hass?.locale?.time_format;
-    if (tf === "12") return true;
-    if (tf === "24") return false;
-    return undefined;
-  }
-  _fmt(ts, opts) {
-    try {
-      return new Intl.DateTimeFormat(this._hass?.locale?.language || this._lang, { timeZone: this._timeZone, ...opts }).format(new Date(ts));
-    } catch (e) {
-      return new Date(ts).toLocaleString();
-    }
-  }
-  _fmtTime(ts) {
-    return this._fmt(ts, { hour: "2-digit", minute: "2-digit", hour12: this._hour12 });
-  }
-  _dayKey(ts) {
-    return this._fmt(ts, { year: "numeric", month: "2-digit", day: "2-digit" });
-  }
-  _weekdayShort(ts) {
-    return this._fmt(ts, { weekday: "short" }).replace(/\.$/, "");
-  }
-  _round(v) {
-    return v == null || v === "" || !Number.isFinite(+v) ? "–" : Math.round(+v);
-  }
-  _$(id) {
-    return this.shadowRoot.getElementById(id);
-  }
-
-  /* ---------- skeleton */
-
-  _layout() {
-    const l = { ...DEFAULT_LAYOUT, ...(this._config.layout || {}) };
-    const areas = Array.isArray(l.areas) ? l.areas : String(l.areas).split("\n");
-    return {
-      areas: areas.map((a) => `"${String(a).replace(/"/g, "").trim()}"`).join(" "),
-      names: new Set(areas.join(" ").split(/\s+/).filter(Boolean)),
-      columns: l.columns,
-      rows: l.rows,
-    };
-  }
-
-  _build() {
-    const c = this._config;
-    const berlin = c.departure_style === "berlin";
-    const depHead = (id) => `<div class="panel-head">
-        <span class="title">${berlin ? `<span class="u-sign">U</span>` : `<ha-icon icon="${esc(c.departures_icon || "mdi:subway-variant")}"></ha-icon>`}<span id="${id}-title"></span></span>
-        <span class="meta" id="${id}-meta"></span>
-      </div>${berlin ? `<div class="cols"><span>${this._t("line")}</span><span>${this._t("destination")}</span><span>${this._t("departure")}</span></div>` : ""}`;
-    const goIcon = `<ha-icon class="go" icon="mdi:chevron-right"></ha-icon>`;
-
-    this.shadowRoot.innerHTML = `
-      <style>${STYLE}</style>
+`,dt=i=>String(i).padStart(2,"0"),Be=(i,t)=>{try{let e=localStorage.getItem(i);return e?JSON.parse(e):t}catch{return t}},Vt=(i,t)=>{try{localStorage.setItem(i,JSON.stringify(t))}catch{}},St=(i,t=!1)=>{let e=i<0;i=Math.abs(i);let A=Math.floor(i/36e5),s=Math.floor(i%36e5/6e4),n=Math.floor(i%6e4/1e3),r=Math.floor(i%1e3/10),o=A?`${A}:${dt(s)}:${dt(n)}`:`${dt(s)}:${dt(n)}`;return(e?"\u2212":"")+o+(t?`,${dt(r)}`:"")},Dr=()=>Math.random().toString(36).slice(2,10),Ir=i=>!!i&&["on","open","playing","home","unlocked","heat","cool"].includes(i.state),Zs=class extends HTMLElement{constructor(){super(),this.attachShadow({mode:"open"}),this._subs={},this._subKeys={},this._items=null,this._forecast={},this._pending=new Set,this._last={},this._view=null,this._trHidden=new Set(Be("idc_tr_hidden",[])),this._shSort=Be("idc_sh_sort","list"),this._data={alarms:[]},this._fired={},this._snoozes=[],this._timers=Be("idc_timers",[]),this._sw=Be("idc_stopwatch",{start:null,acc:0,laps:[]}),this._lastInteraction=Date.now()}static getConfigElement(){return document.createElement(Fs)}static getStubConfig(t){let e=Object.keys(t?.states||{}),A=e.filter(s=>s.startsWith("todo."));return{weather_entity:e.find(s=>s.startsWith("weather."))||"",todo_entity:A.find(s=>s.includes("bring"))||A[0]||"",departure_entities:[]}}setConfig(t){if(!t||typeof t!="object")throw new Error("Invalid configuration");let e=t.departure_entities??(t.departure_entity?[t.departure_entity]:[]);if(!Array.isArray(e))throw new Error("departure_entities must be a list");this._config={...Xt,...t},this._depConf=e.map(o=>typeof o=="string"?{entity:o}:o).filter(o=>o&&o.entity);let A=[t.todo_entity,...t.todo_entities||[]].filter(Boolean);this._lists=[...new Set(A)],this._lists.includes(this._list)||(this._list=this._lists[0]);let n=Array.isArray(t.music_rooms)&&t.music_rooms.length||!!t.sendspin_server?[...Xt.tabs,"music"]:Xt.tabs,r=(Array.isArray(t.tabs)?t.tabs:n).filter(o=>Ks.some(a=>a.id===o));this._tabs=r.length?r:["overview"],this._last={},this._built=!1,this._hass&&this._update(!0)}set hass(t){let e=!this._hass;this._hass=t,this._update(e)}get hass(){return this._hass}getCardSize(){return 14}getGridOptions(){return{columns:"full",rows:"auto",min_columns:12}}connectedCallback(){clearInterval(this._timer),this._timer=setInterval(()=>this._tick(),1e3),this._hass&&this._config&&this._update(!0),this._built&&!this._ssActive&&this._sendspinCfg()&&(this._ssActive=!0,this._sendspinStart())}disconnectedCallback(){clearInterval(this._timer),clearInterval(this._swTimer),this._swTimer=null,this._stopRing(!0),this._resizeObs?.disconnect();for(let t of Object.keys(this._subs))this._unsubscribe(t);this._ssListener&&T.listeners.delete(this._ssListener),this._ssActive&&(this._ssActive=!1,hc())}get _lang(){return(this._hass?.locale?.language||this._hass?.language||navigator.language||"de").toLowerCase().split("-")[0]}_t(t,...e){let A=(ze[this._lang]||ze.en)[t]??ze.en[t]??t;return typeof A=="function"?A(...e):A}get _timeZone(){if(this._hass?.locale?.time_zone==="server"&&this._hass?.config?.time_zone)return this._hass.config.time_zone}get _hour12(){let t=this._hass?.locale?.time_format;if(t==="12")return!0;if(t==="24")return!1}_fmt(t,e){try{return new Intl.DateTimeFormat(this._hass?.locale?.language||this._lang,{timeZone:this._timeZone,...e}).format(new Date(t))}catch{return new Date(t).toLocaleString()}}_fmtTime(t){return this._fmt(t,{hour:"2-digit",minute:"2-digit",hour12:this._hour12})}_dayKey(t){return this._fmt(t,{year:"numeric",month:"2-digit",day:"2-digit"})}_weekdayShort(t){return this._fmt(t,{weekday:"short"}).replace(/\.$/,"")}_round(t){return t==null||t===""||!Number.isFinite(+t)?"\u2013":Math.round(+t)}_$(t){return this.shadowRoot.getElementById(t)}_layout(){let t={...ec,...this._config.layout||{}},e=Array.isArray(t.areas)?t.areas:String(t.areas).split(`
+`);return{areas:e.map(A=>`"${String(A).replace(/"/g,"").trim()}"`).join(" "),names:new Set(e.join(" ").split(/\s+/).filter(Boolean)),columns:t.columns,rows:t.rows}}_build(){let t=this._config,e=t.departure_style==="berlin",A=a=>`<div class="panel-head">
+        <span class="title">${e?'<span class="u-sign">U</span>':`<ha-icon icon="${y(t.departures_icon||"mdi:subway-variant")}"></ha-icon>`}<span id="${a}-title"></span></span>
+        <span class="meta" id="${a}-meta"></span>
+      </div>${e?`<div class="cols"><span>${this._t("line")}</span><span>${this._t("destination")}</span><span>${this._t("departure")}</span></div>`:""}`,s='<ha-icon class="go" icon="mdi:chevron-right"></ha-icon>';this.shadowRoot.innerHTML=`
+      <style>${uc}</style>
       <ha-card>
         <nav class="tabbar">
-          <div class="tabs">${this._tabs
-            .map((id) => {
-              const t = TABS.find((x) => x.id === id);
-              return `<button class="tab" data-goto="${id}"><ha-icon icon="${t.icon}"></ha-icon><span>${this._t(`tab_${id}`)}</span></button>`;
-            })
-            .join("")}</div>
-          <div class="tb-right"><button class="tb-clock" data-goto="clock" id="tb-clock"></button></div>
+          <div class="tabs">${this._tabs.map(a=>{let c=Ks.find(l=>l.id===a);return`<button class="tab" data-goto="${a}"><ha-icon icon="${c.icon}"></ha-icon><span>${this._t(`tab_${a}`)}</span></button>`}).join("")}</div>
+          <div class="tb-right"><button class="tb-ss" id="tb-ss" data-goto="music" hidden></button><button class="tb-clock" data-goto="clock" id="tb-clock"></button></div>
         </nav>
         <div class="views">
           <div class="view v-overview" data-view="overview" hidden>
@@ -1195,17 +521,17 @@ class IpadDashboardCard extends HTMLElement {
               <div class="time" id="ov-time"></div><div class="date" id="ov-date"></div><div class="ov-info" id="ov-info"></div>
             </section>
             <section class="panel tile wx ov-weather" data-area="weather" data-goto="weather" id="ov-weather"></section>
-            <section class="panel tile ov-dep${berlin ? " berlin" : ""}" data-area="dep" data-goto="transit">
-              ${depHead("ovd")}
+            <section class="panel tile ov-dep${e?" berlin":""}" data-area="dep" data-goto="transit">
+              ${A("ovd")}
               <div class="scroll" id="ov-dep"></div>
               <div class="ov-advice" id="ov-adv" hidden></div>
             </section>
             <section class="panel tile ov-todo" data-area="todo" data-goto="shopping">
-              <div class="panel-head"><span class="title"><ha-icon icon="mdi:cart-outline"></ha-icon><span id="ovt-title"></span></span><span class="meta"><span id="ovt-count"></span>${goIcon}</span></div>
+              <div class="panel-head"><span class="title"><ha-icon icon="mdi:cart-outline"></ha-icon><span id="ovt-title"></span></span><span class="meta"><span id="ovt-count"></span>${s}</span></div>
               <div class="scroll" id="ov-todo"></div>
             </section>
             <section class="panel tile ov-plan" data-area="plan" data-goto="home">
-              <div class="panel-head"><span class="title"><ha-icon icon="mdi:floor-plan"></ha-icon><span class="plan-title"></span></span><span class="meta"><span id="ovp-meta"></span>${goIcon}</span></div>
+              <div class="panel-head"><span class="title"><ha-icon icon="mdi:floor-plan"></ha-icon><span class="plan-title"></span></span><span class="meta"><span id="ovp-meta"></span>${s}</span></div>
               <div class="plan-body" id="ov-plan"></div>
             </section>
           </div>
@@ -1216,12 +542,12 @@ class IpadDashboardCard extends HTMLElement {
           </div>
 
           <div class="view v-transit" data-view="transit" hidden>
-            <section class="panel${berlin ? " berlin" : ""}" id="tr-board-panel">
-              ${depHead("trd")}
+            <section class="panel${e?" berlin":""}" id="tr-board-panel">
+              ${A("trd")}
               <div class="scroll" id="tr-board"></div>
               <div class="tr-foot" id="tr-foot"></div>
             </section>
-            <section class="panel${berlin ? " berlin" : ""}">
+            <section class="panel${e?" berlin":""}">
               <div class="panel-head"><span class="title"><ha-icon icon="mdi:map-marker-path"></ha-icon><span>${this._t("next_trains")}</span></span></div>
               <div class="chips tr-filter" id="tr-filter"></div>
               <div class="scroll"><div class="dirs" id="tr-dirs"></div></div>
@@ -1263,6 +589,40 @@ class IpadDashboardCard extends HTMLElement {
             </section>
           </div>
 
+          <div class="view v-music" data-view="music" hidden>
+            <div class="mu-top">
+              <div class="mu-rooms" id="mu-rooms"></div>
+              <div class="mu-ss" id="mu-ss" hidden></div>
+            </div>
+            <div class="panel msg" id="mu-empty" hidden>${y(this._t("mu_no_rooms"))}</div>
+            <section class="panel mu-main" id="mu-main" hidden>
+              <div class="mu-cover" id="mu-cover"></div>
+              <div class="mu-info">
+                <div class="mu-room" id="mu-room"></div>
+                <div class="mu-title" id="mu-title"></div>
+                <div class="mu-artist" id="mu-artist"></div>
+                <div class="mu-album" id="mu-album"></div>
+                <div class="mu-progwrap" id="mu-progwrap">
+                  <div class="mu-prog" id="mu-prog"><i id="mu-prog-i"></i></div>
+                  <div class="mu-times"><span id="mu-pos"></span><span id="mu-dur"></span></div>
+                </div>
+                <div class="mu-ctrls" id="mu-ctrls"></div>
+                <div class="mu-volrow" id="mu-volrow">
+                  <button class="mbtn small" data-mact="mute" id="mu-mute"><ha-icon icon="mdi:volume-high"></ha-icon></button>
+                  <span id="mu-vsteps" style="display:contents"></span>
+                  <input class="vol" id="mu-vol" type="range" min="0" max="100" step="1" />
+                  <span class="v" id="mu-vol-v"></span>
+                  <button class="mbtn small" data-mact="power" id="mu-power"><ha-icon icon="mdi:power"></ha-icon></button>
+                </div>
+              </div>
+              <div class="mu-pl" id="mu-pl" hidden>
+                <div class="panel-head"><span class="title"><ha-icon icon="mdi:playlist-music"></ha-icon><span>${this._t("mu_playlists")}</span></span></div>
+                <input id="mu-pl-q" type="search" placeholder="${y(this._t("mu_pl_search"))}" hidden />
+                <div class="scroll" id="mu-pl-list"></div>
+              </div>
+            </section>
+          </div>
+
           <div class="view v-clock" data-view="clock" hidden>
             <section class="panel cl-hero"><div class="time" id="cl-time"></div><div class="meta2" id="cl-meta"></div></section>
             <section class="panel">
@@ -1273,9 +633,7 @@ class IpadDashboardCard extends HTMLElement {
             <section class="panel">
               <div class="panel-head"><span class="title"><ha-icon icon="mdi:timer-sand"></ha-icon><span>${this._t("timers")}</span></span></div>
               <div class="chips" id="tm-presets"></div>
-              <form class="tm-custom" id="tm-form" autocomplete="off"><input id="tm-min" type="number" inputmode="decimal" min="0" step="any" placeholder="${this._t(
-                "custom_min"
-              )}"/><button class="btn" type="submit"><ha-icon icon="mdi:play"></ha-icon></button></form>
+              <form class="tm-custom" id="tm-form" autocomplete="off"><input id="tm-min" type="number" inputmode="decimal" min="0" step="any" placeholder="${this._t("custom_min")}"/><button class="btn" type="submit"><ha-icon icon="mdi:play"></ha-icon></button></form>
               <div class="scroll" id="cl-timers" style="margin-top:6px"></div>
             </section>
             <section class="panel">
@@ -1294,7 +652,7 @@ class IpadDashboardCard extends HTMLElement {
             <input id="ed-name" type="text" autocapitalize="sentences" />
             <div id="ed-spec-wrap">
               <label for="ed-spec">${this._t("item_spec")}</label>
-              <input id="ed-spec" type="text" placeholder="${esc(this._t("item_spec_placeholder"))}" />
+              <input id="ed-spec" type="text" placeholder="${y(this._t("item_spec_placeholder"))}" />
               <div class="chips" id="ed-chips"></div>
             </div>
             <div class="btns">
@@ -1311,11 +669,9 @@ class IpadDashboardCard extends HTMLElement {
             <h3>${this._t("edit_alarm")}</h3>
             <input id="al-time" type="time" required />
             <label>${this._t("repeat")}</label>
-            <div class="days" id="al-days">${[1, 2, 3, 4, 5, 6, 7]
-              .map((d) => `<button type="button" data-day="${d}">${this._t("days_short")[d - 1]}</button>`)
-              .join("")}</div>
+            <div class="days" id="al-days">${[1,2,3,4,5,6,7].map(a=>`<button type="button" data-day="${a}">${this._t("days_short")[a-1]}</button>`).join("")}</div>
             <label for="al-label">${this._t("alarm_label")}</label>
-            <input id="al-label" type="text" placeholder="${esc(this._t("alarm_label_placeholder"))}" />
+            <input id="al-label" type="text" placeholder="${y(this._t("alarm_label_placeholder"))}" />
             <div class="btns">
               <button type="button" class="btn danger" id="al-del">${this._t("delete")}</button>
               <span class="sp"></span>
@@ -1334,1721 +690,81 @@ class IpadDashboardCard extends HTMLElement {
           </div>
         </div>
         <div class="toast" id="toast" hidden></div>
-      </ha-card>`;
-
-    this._el = { card: this.shadowRoot.querySelector("ha-card") };
-    const card = this._el.card;
-    card.setAttribute("lang", this._hass?.locale?.language || this._lang);
-    const layout = this._layout();
-    card.style.setProperty("--idc-height", c.height);
-    card.style.setProperty("--idc-areas", layout.areas);
-    card.style.setProperty("--idc-columns", layout.columns);
-    card.style.setProperty("--idc-rows", layout.rows);
-    if (c.background) card.style.setProperty("--idc-bg", c.background);
-    for (const sec of this.shadowRoot.querySelectorAll(".v-overview [data-area]")) sec.hidden = !layout.names.has(sec.dataset.area);
-
-    // navigation
-    card.addEventListener("click", (ev) => {
-      const nav = ev.target.closest("[data-goto]");
-      if (nav && !ev.target.closest("input, form, .room, [data-uid], [data-reopen]")) this._go(nav.dataset.goto);
-    });
-    // keep HA's global keyboard shortcuts (e, c, a, m …) from firing while typing
-    for (const input of this.shadowRoot.querySelectorAll("input")) {
-      for (const type of ["keydown", "keyup", "keypress"]) input.addEventListener(type, (ev) => ev.stopPropagation());
-    }
-    // unlock audio on first touch (iOS) + inactivity tracking
-    card.addEventListener("pointerdown", () => {
-      this._lastInteraction = Date.now();
-      this._unlockAudio();
-    });
-    card.addEventListener("keydown", () => (this._lastInteraction = Date.now()));
-
-    this._bindShopping();
-    this._bindPress(this._$("hm-plan"), "[data-room]", (el, hold) => this._onEntityPress(this._roomAt(+el.dataset.room)?.entity, hold));
-    this._bindPress(this._$("hm-ents"), "[data-entity]", (el, hold) => this._onEntityPress(el.dataset.entity, hold));
-    this._bindTransit();
-    this._bindClock();
-
-    this._resizeObs?.disconnect();
-    this._resizeObs = new ResizeObserver(() => {
-      this._fitPlan(this._$("ov-plan"));
-      this._fitPlan(this._$("hm-plan"));
-    });
-    this._resizeObs.observe(this._$("ov-plan"));
-    this._resizeObs.observe(this._$("hm-plan"));
-    this._built = true;
-    const start = this._view && (this._tabs.includes(this._view) || this._view === "clock") ? this._view : c.default_tab;
-    this._view = null;
-    this._go(this._tabs.includes(start) || start === "clock" ? start : this._tabs[0]);
-  }
-
-  /** Tap / long-press handling that also works on touch devices. */
-  _bindPress(container, selector, handler) {
-    let timer = null;
-    let start = null;
-    let held = false;
-    const clear = () => {
-      clearTimeout(timer);
-      timer = null;
-    };
-    container.addEventListener("pointerdown", (ev) => {
-      const el = ev.target.closest(selector);
-      if (!el) return;
-      held = false;
-      start = { x: ev.clientX, y: ev.clientY };
-      clear();
-      timer = setTimeout(() => {
-        held = true;
-        timer = null;
-        handler(el, true, ev);
-      }, 520);
-    });
-    container.addEventListener("pointermove", (ev) => {
-      if (start && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) > 12) clear();
-    });
-    container.addEventListener("pointercancel", clear);
-    container.addEventListener("pointerleave", clear);
-    container.addEventListener("contextmenu", (ev) => {
-      if (ev.target.closest(selector)) ev.preventDefault();
-    });
-    container.addEventListener("click", (ev) => {
-      const el = ev.target.closest(selector);
-      clear();
-      if (!el) return;
-      if (held) {
-        held = false;
-        return;
-      }
-      handler(el, false, ev);
-    });
-  }
-
-  /* ---------- navigation */
-
-  _go(view) {
-    if (!this._built) return;
-    if (view !== "clock" && !this._tabs.includes(view)) return;
-    this._view = view;
-    for (const v of this.shadowRoot.querySelectorAll("[data-view]")) v.hidden = v.dataset.view !== view;
-    for (const b of this.shadowRoot.querySelectorAll(".tabbar [data-goto]")) b.classList.toggle("active", b.dataset.goto === view);
-    this._renderView();
-    this._syncStopwatchTimer();
-  }
-
-  _renderView() {
-    const v = this._view;
-    if (v === "overview") {
-      this._ovClock();
-      this._ovWeather();
-      this._ovDep();
-      this._ovTodo();
-      this._renderPlan(this._$("ov-plan"), true);
-    } else if (v === "weather") this._wxRender();
-    else if (v === "transit") this._trRender();
-    else if (v === "shopping") this._shRender();
-    else if (v === "home") this._homeRender();
-    else if (v === "clock") this._clRender();
-    this._tbClock();
-  }
-
-  /** Re-renders the part of the active view that depends on `part`. */
-  _refresh(part) {
-    const v = this._view;
-    const map = {
-      weather: { overview: () => this._ovWeather(), weather: () => this._wxRender() },
-      todo: { overview: () => this._ovTodo(), shopping: () => this._shRender() },
-      dep: { overview: () => this._ovDep(), transit: () => this._trRender() },
-      home: { overview: () => this._renderPlan(this._$("ov-plan")), home: () => this._homeRender() },
-    };
-    map[part]?.[v]?.();
-  }
-
-  _update(force) {
-    if (!this._config || !this._hass) return;
-    if (!this._built) {
-      this._build();
-      force = true;
-    }
-    this._ensureSubscriptions();
-
-    const st = (id) => (id ? this._hass.states[id] : undefined);
-    const changed = (key, vals) => {
-      const prev = this._last[key];
-      const diff = force || !prev || vals.length !== prev.length || vals.some((s, i) => s !== prev[i]);
-      this._last[key] = vals;
-      return diff;
-    };
-    if (changed("weather", [st(this._config.weather_entity), st("sun.sun")])) this._refresh("weather");
-    if (changed("todo", [st(this._list)])) this._refresh("todo");
-    if (changed("deps", this._depConf.map((d) => st(d.entity)))) this._refresh("dep");
-    if (changed("home", this._homeEntityIds().map(st))) this._refresh("home");
-  }
-
-  /* ---------- subscriptions */
-
-  _ensureSubscriptions() {
-    const conn = this._hass?.connection;
-    if (!conn || !this.isConnected) return;
-
-    const wId = this._config.weather_entity;
-    const wState = wId && this._hass.states[wId];
-    const sf = wState?.attributes.supported_features || 0;
-    const has = { daily: !!(sf & 1), hourly: !!(sf & 2), twice_daily: !!(sf & 4) };
-    const dailyType = has.daily ? "daily" : has.twice_daily ? "twice_daily" : null;
-
-    for (const [key, type, want] of [
-      ["hourly", "hourly", has.hourly],
-      ["daily", dailyType, !!dailyType],
-    ]) {
-      this._syncSub(
-        `fc_${key}`,
-        want ? `${wId}|${type}` : null,
-        { type: "weather/subscribe_forecast", forecast_type: type, entity_id: wId },
-        (msg) => {
-          this._forecast[key] = { type, list: msg.forecast || [] };
-          this._refresh("weather");
-        },
-        () => delete this._forecast[key]
-      );
-    }
-
-    const tId = this._list;
-    this._syncSub(
-      "todo",
-      tId && this._hass.states[tId] ? tId : null,
-      { type: "todo/item/subscribe", entity_id: tId },
-      (msg) => {
-        this._items = msg.items || [];
-        this._pending.clear();
-        this._refresh("todo");
-      },
-      () => (this._items = null)
-    );
-
-    this._syncSub(
-      "userdata",
-      USER_DATA_KEY,
-      { type: "frontend/subscribe_user_data", key: USER_DATA_KEY },
-      (msg) => this._setUserData(msg.value),
-      () => {},
-      () => this._loadUserDataFallback()
-    );
-  }
-
-  _syncSub(key, desired, message, cb, reset, onError) {
-    if (this._subKeys[key] === desired && (desired === null || this._subs[key])) return;
-    this._unsubscribe(key);
-    reset();
-    this._subKeys[key] = desired;
-    if (!desired) return;
-    this._subs[key] = this._hass.connection.subscribeMessage(cb, message).catch((err) => {
-      console.warn(`[${CARD_TAG}] subscription ${key} failed`, err);
-      onError?.(err);
-      return null;
-    });
-  }
-
-  _unsubscribe(key) {
-    const p = this._subs[key];
-    delete this._subs[key];
-    delete this._subKeys[key];
-    if (p) p.then((unsub) => unsub && unsub()).catch(() => {});
-  }
-
-  /* ---------- stored data (alarms) */
-
-  _setUserData(value) {
-    this._data = { alarms: [], ...(value || lsGet(USER_DATA_KEY, {}) || {}) };
-    if (this._view === "clock") this._clRender();
-    if (this._view === "overview") this._ovClock();
-    this._tbClock();
-  }
-
-  async _loadUserDataFallback() {
-    try {
-      const r = await this._hass.callWS({ type: "frontend/get_user_data", key: USER_DATA_KEY });
-      this._setUserData(r?.value);
-    } catch (e) {
-      this._setUserData(null);
-    }
-  }
-
-  async _saveUserData() {
-    lsSet(USER_DATA_KEY, this._data);
-    try {
-      await this._hass.callWS({ type: "frontend/set_user_data", key: USER_DATA_KEY, value: this._data });
-    } catch (e) {
-      console.warn(`[${CARD_TAG}] could not store user data, using this device only`, e);
-    }
-  }
-
-  /* ---------- clock tick */
-
-  _tick() {
-    if (!this._built || !this._hass) return;
-    const now = Date.now();
-    const time = this._fmtTime(now);
-    const sec = this._config.show_seconds ? pad2(new Date(now).getSeconds()) : "";
-    const key = time + sec;
-    if (key !== this._last.clock) {
-      const minuteChanged = time !== this._last.clockMin;
-      this._last.clock = key;
-      this._last.clockMin = time;
-      if (this._view === "overview") this._ovClock();
-      this._tbClock();
-      for (const id of ["ovd-meta", "trd-meta"]) if (this._config.departure_style === "berlin") this._$(id).textContent = time;
-      if (minuteChanged) {
-        this._checkAlarms(now);
-        this._refresh("weather");
-      }
-    }
-    if (this._view === "clock") this._clTick();
-    this._checkTimers(now);
-    if (!this._last.depTick || now - this._last.depTick > 15000) {
-      this._last.depTick = now;
-      this._refresh("dep");
-    }
-    const ret = +this._config.return_to_overview || 0;
-    if (ret > 0 && this._view !== this._tabs[0] && now - this._lastInteraction > ret * 1000 && !this._ringing && !this._sheetOpen()) {
-      this._go(this._tabs[0]);
-    }
-  }
-
-  _sheetOpen() {
-    return !this._$("ed-overlay").hidden || !this._$("al-overlay").hidden;
-  }
-
-  _tbClock() {
-    const el = this._$("tb-clock");
-    if (!el) return;
-    el.hidden = this._view === "overview";
-    const next = this._nextAlarm();
-    const running = this._timers.length || this._sw.start;
-    el.innerHTML = `${next ? `<ha-icon icon="mdi:alarm"></ha-icon>` : ""}${running ? `<ha-icon icon="mdi:timer-sand"></ha-icon>` : ""}${esc(
-      this._fmtTime(Date.now())
-    )}`;
-  }
-
-  /* ================================================================ overview */
-
-  _ovClock() {
-    const now = Date.now();
-    const sec = this._config.show_seconds ? `<span class="sec">${pad2(new Date(now).getSeconds())}</span>` : "";
-    this._$("ov-time").innerHTML = `${esc(this._fmtTime(now))}${sec}`;
-    this._$("ov-date").textContent = this._fmt(now, { weekday: "long", day: "numeric", month: "long" });
-    const info = [];
-    const next = this._nextAlarm();
-    if (next) info.push(`<span><ha-icon icon="mdi:alarm"></ha-icon>${esc(this._alarmWhen(next.ts))}${next.alarm.label ? ` · ${esc(next.alarm.label)}` : ""}</span>`);
-    for (const t of this._timers) info.push(`<span><ha-icon icon="mdi:timer-sand"></ha-icon>${fmtDuration(t.end - now)}${t.label ? ` · ${esc(t.label)}` : ""}</span>`);
-    if (this._sw.start) info.push(`<span><ha-icon icon="mdi:timer-outline"></ha-icon>${fmtDuration(this._swElapsed())}</span>`);
-    this._$("ov-info").innerHTML = info.join("");
-  }
-
-  _alarmWhen(ts) {
-    const today = this._dayKey(Date.now());
-    const tomorrow = this._dayKey(Date.now() + 86400000);
-    const k = this._dayKey(ts);
-    const day = k === today ? "" : k === tomorrow ? `${this._t("tomorrow")}, ` : `${this._weekdayShort(ts)}, `;
-    return `${day}${this._fmtTime(ts)}`;
-  }
-
-  /* ================================================================ weather */
-
-  _condLabel(cond, stateObj) {
-    const dict = CONDITIONS[this._lang];
-    if (dict?.[cond]) return dict[cond];
-    if (stateObj && this._hass.formatEntityState) return this._hass.formatEntityState(stateObj);
-    return CONDITIONS.en[cond] || cond || "";
-  }
-
-  /** Night detection for a timestamp using sun.sun (falls back to 6–20 h). */
-  _isNight(ts) {
-    const sun = this._hass.states["sun.sun"];
-    const tod = (t) => {
-      const d = new Date(t);
-      return d.getHours() * 60 + d.getMinutes();
-    };
-    const m = tod(ts);
-    const rise = sun?.attributes.next_rising ? tod(Date.parse(sun.attributes.next_rising)) : 6 * 60;
-    const set = sun?.attributes.next_setting ? tod(Date.parse(sun.attributes.next_setting)) : 20 * 60;
-    return m < rise || m >= set;
-  }
-
-  _dailyList() {
-    const daily = this._forecast.daily;
-    if (daily?.list.length) {
-      if (daily.type !== "twice_daily") return daily.list;
-      const byDay = new Map();
-      for (const f of daily.list) {
-        const k = this._dayKey(Date.parse(f.datetime));
-        const d = byDay.get(k) || { datetime: f.datetime, temperature: -Infinity, templow: Infinity, precipitation_probability: 0 };
-        d.temperature = Math.max(d.temperature, f.temperature ?? -Infinity);
-        d.templow = Math.min(d.templow, f.templow ?? f.temperature ?? Infinity);
-        d.precipitation_probability = Math.max(d.precipitation_probability, f.precipitation_probability || 0);
-        if (f.is_daytime !== false || !d.condition) d.condition = f.condition;
-        byDay.set(k, d);
-      }
-      return [...byDay.values()];
-    }
-    const hourly = this._forecast.hourly?.list || [];
-    const byDay = new Map();
-    for (const f of hourly) {
-      const ts = Date.parse(f.datetime);
-      const k = this._dayKey(ts);
-      const d = byDay.get(k) || { datetime: f.datetime, temperature: -Infinity, templow: Infinity, precipitation_probability: 0, _c: {} };
-      d.temperature = Math.max(d.temperature, f.temperature);
-      d.templow = Math.min(d.templow, f.temperature);
-      d.precipitation_probability = Math.max(d.precipitation_probability, f.precipitation_probability || 0);
-      if (!this._isNight(ts)) d._c[f.condition] = (d._c[f.condition] || 0) + 1;
-      byDay.set(k, d);
-    }
-    return [...byDay.values()].map((d) => ({ ...d, condition: Object.entries(d._c).sort((a, b) => b[1] - a[1])[0]?.[0] || "cloudy" }));
-  }
-
-  /** Common weather data or an error HTML string. */
-  _wx() {
-    const id = this._config.weather_entity;
-    if (!id) return { error: `<div class="msg">${this._t("not_configured")}</div>` };
-    const s = this._hass.states[id];
-    if (!s) return { error: `<div class="msg error">${this._t("not_found")}: ${esc(id)}</div>` };
-    if (s.state === "unavailable" || s.state === "unknown")
-      return { error: `<div class="msg">${esc(s.attributes.friendly_name || id)} ${this._t("unavailable")}</div>` };
-    const now = Date.now();
-    const sun = this._hass.states["sun.sun"];
-    const night = s.state === "clear-night" || (sun ? sun.state === "below_horizon" : this._isNight(now));
-    const days = this._dailyList();
-    const todayKey = this._dayKey(now);
-    const today = days.find((d) => this._dayKey(Date.parse(d.datetime)) === todayKey);
-    const a = s.attributes;
-    const hl =
-      today && Number.isFinite(today.temperature)
-        ? `${this._t("high")}: ${this._round(today.temperature)}° ${this._t("low")}: ${this._round(today.templow)}°`
-        : "";
-    return { s, a, now, night, days, today, todayKey, hl, loc: this._config.weather_location || a.friendly_name || "" };
-  }
-
-  _applyGradient(el, w) {
-    el.classList.toggle("grad", !!this._config.weather_gradient && !!w?.s);
-    if (w?.s && this._config.weather_gradient) {
-      const [ga, gb] = gradientFor(w.s.state, w.night);
-      el.style.setProperty("--w-a", ga);
-      el.style.setProperty("--w-b", gb);
-    }
-  }
-
-  _hoursHtml(w, n) {
-    const hourly = (this._forecast.hourly?.list || []).filter((f) => Date.parse(f.datetime) > w.now - 3600000).slice(0, n);
-    if (!hourly.length) return "";
-    return `<div class="w-hours" style="--n:${hourly.length}">${hourly
-      .map((f, i) => {
-        const ts = Date.parse(f.datetime);
-        const label = i === 0 && ts <= w.now ? this._t("now_hour") : this._fmt(ts, { hour: "2-digit", hour12: this._hour12 }).replace(/\s?Uhr$/, "");
-        const night = f.is_daytime === false || (f.is_daytime === undefined && this._isNight(ts));
-        const pp = f.precipitation_probability;
-        return `<div class="w-hour"><span class="h">${esc(label)}</span>${weatherSvg(f.condition, night)}<span class="p">${
-          pp >= 20 ? `${this._round(pp)} %` : ""
-        }</span><span>${this._round(f.temperature)}°</span></div>`;
-      })
-      .join("")}</div>`;
-  }
-
-  _daysHtml(w, n) {
-    const startOfToday = new Date(w.now).setHours(0, 0, 0, 0);
-    const dl = w.days.filter((d) => Date.parse(d.datetime) >= startOfToday - 3600000).slice(0, n);
-    if (!dl.length) return "";
-    const curT = w.a.temperature != null && Number.isFinite(+w.a.temperature) ? +w.a.temperature : null;
-    const lo = Math.min(...dl.map((d) => d.templow).filter(Number.isFinite), curT ?? Infinity);
-    const hi = Math.max(...dl.map((d) => d.temperature).filter(Number.isFinite), curT ?? -Infinity);
-    const span = Math.max(1, hi - lo);
-    return dl
-      .map((d) => {
-        const ts = Date.parse(d.datetime);
-        const isToday = this._dayKey(ts) === w.todayKey;
-        const label = isToday ? this._t("today") : this._weekdayShort(ts);
-        const dLo = Number.isFinite(d.templow) ? d.templow : d.temperature;
-        const dHi = d.temperature;
-        const left = ((dLo - lo) / span) * 100;
-        const width = Math.max(4, ((dHi - dLo) / span) * 100);
-        const cur = isToday && curT != null ? `<b style="left:${((curT - lo) / span) * 100}%"></b>` : "";
-        const pp = d.precipitation_probability;
-        return `<div class="w-day"><span>${esc(label)}</span><span class="ic">${weatherSvg(d.condition, false)}<span class="p">${
-          pp >= 20 ? `${this._round(pp)} %` : ""
-        }</span></span><span class="lo">${this._round(dLo)}°</span><span class="bar"><i style="left:${left}%;width:${width}%;background:linear-gradient(90deg,${tempColor(
-          dLo
-        )},${tempColor(dHi)})"></i>${cur}</span><span class="hi">${this._round(dHi)}°</span></div>`;
-      })
-      .join("");
-  }
-
-  _ovWeather() {
-    const el = this._$("ov-weather");
-    const w = this._wx();
-    this._applyGradient(el, w);
-    if (w.error) {
-      el.innerHTML = `<div class="panel-head"><span class="title">${this._t("weather")}</span></div>${w.error}`;
-      return;
-    }
-    const n = Math.max(0, Math.min(+this._config.forecast_hours || 0, 8));
-    const hours = n ? this._hoursHtml(w, n) : "";
-    el.innerHTML = `
+        <div class="ss-pair" id="ss-pair" hidden>${this._t("ss_pair")}<b id="ss-pair-code"></b></div>
+        <div class="overlay ss-overlay" id="ss-overlay" hidden><div class="ss-pill"><ha-icon icon="mdi:volume-high"></ha-icon>${this._t("ss_tap")}</div></div>
+      </ha-card>`,this._el={card:this.shadowRoot.querySelector("ha-card")};let n=this._el.card;n.setAttribute("lang",this._hass?.locale?.language||this._lang);let r=this._layout();n.style.setProperty("--idc-height",t.height),n.style.setProperty("--idc-areas",r.areas),n.style.setProperty("--idc-columns",r.columns),n.style.setProperty("--idc-rows",r.rows),t.background&&n.style.setProperty("--idc-bg",t.background);for(let a of this.shadowRoot.querySelectorAll(".v-overview [data-area]"))a.hidden=!r.names.has(a.dataset.area);n.addEventListener("click",a=>{let c=a.target.closest("[data-goto]");c&&!a.target.closest("input, form, .room, [data-uid], [data-reopen]")&&this._go(c.dataset.goto)});for(let a of this.shadowRoot.querySelectorAll("input"))for(let c of["keydown","keyup","keypress"])a.addEventListener(c,l=>l.stopPropagation());n.addEventListener("pointerdown",()=>{this._lastInteraction=Date.now(),this._unlockAudio()}),n.addEventListener("keydown",()=>this._lastInteraction=Date.now()),n.addEventListener("click",a=>{if(!T.player)return;let c=!T.unlocked;this._sendspinUnlock(),c&&a.target.closest("#ss-overlay")&&a.stopPropagation()},!0),this._bindShopping(),this._bindPress(this._$("hm-plan"),"[data-room]",(a,c)=>this._onEntityPress(this._roomAt(+a.dataset.room)?.entity,c)),this._bindPress(this._$("hm-ents"),"[data-entity]",(a,c)=>this._onEntityPress(a.dataset.entity,c)),this._bindTransit(),this._bindClock(),this._bindMusic(),this._resizeObs?.disconnect(),this._resizeObs=new ResizeObserver(()=>{this._fitPlan(this._$("ov-plan")),this._fitPlan(this._$("hm-plan"))}),this._resizeObs.observe(this._$("ov-plan")),this._resizeObs.observe(this._$("hm-plan")),this._built=!0,!this._ssActive&&this._sendspinCfg()?(this._ssActive=!0,this._sendspinStart()):this._updateSendspinUi();let o=this._view&&(this._tabs.includes(this._view)||this._view==="clock")?this._view:t.default_tab;this._view=null,this._go(this._tabs.includes(o)||o==="clock"?o:this._tabs[0])}_bindPress(t,e,A){let s=null,n=null,r=!1,o=()=>{clearTimeout(s),s=null};t.addEventListener("pointerdown",a=>{let c=a.target.closest(e);c&&(r=!1,n={x:a.clientX,y:a.clientY},o(),s=setTimeout(()=>{r=!0,s=null,A(c,!0,a)},520))}),t.addEventListener("pointermove",a=>{n&&Math.hypot(a.clientX-n.x,a.clientY-n.y)>12&&o()}),t.addEventListener("pointercancel",o),t.addEventListener("pointerleave",o),t.addEventListener("contextmenu",a=>{a.target.closest(e)&&a.preventDefault()}),t.addEventListener("click",a=>{let c=a.target.closest(e);if(o(),!!c){if(r){r=!1;return}A(c,!1,a)}})}_go(t){if(this._built&&!(t!=="clock"&&!this._tabs.includes(t))){this._view=t;for(let e of this.shadowRoot.querySelectorAll("[data-view]"))e.hidden=e.dataset.view!==t;for(let e of this.shadowRoot.querySelectorAll(".tabbar [data-goto]"))e.classList.toggle("active",e.dataset.goto===t);this._renderView(),this._syncStopwatchTimer()}}_renderView(){let t=this._view;t==="overview"?(this._ovClock(),this._ovWeather(),this._ovDep(),this._ovTodo(),this._renderPlan(this._$("ov-plan"),!0)):t==="weather"?this._wxRender():t==="transit"?this._trRender():t==="shopping"?this._shRender():t==="home"?this._homeRender():t==="clock"?this._clRender():t==="music"&&(this._musicSig=null,this._muRender()),this._tbClock()}_refresh(t){let e=this._view;({weather:{overview:()=>this._ovWeather(),weather:()=>this._wxRender()},todo:{overview:()=>this._ovTodo(),shopping:()=>this._shRender()},dep:{overview:()=>this._ovDep(),transit:()=>this._trRender()},home:{overview:()=>this._renderPlan(this._$("ov-plan")),home:()=>this._homeRender()},music:{music:()=>this._muRender()}})[t]?.[e]?.()}_update(t){if(!this._config||!this._hass)return;this._built||(this._build(),t=!0),this._ensureSubscriptions();let e=s=>s?this._hass.states[s]:void 0,A=(s,n)=>{let r=this._last[s],o=t||!r||n.length!==r.length||n.some((a,c)=>a!==r[c]);return this._last[s]=n,o};A("weather",[e(this._config.weather_entity),e("sun.sun")])&&this._refresh("weather"),A("todo",[e(this._list)])&&this._refresh("todo"),A("deps",this._depConf.map(s=>e(s.entity)))&&this._refresh("dep"),A("home",this._homeEntityIds().map(e))&&this._refresh("home"),A("music",this._musicRooms().map(s=>e(s.entity)))&&this._refresh("music")}_ensureSubscriptions(){if(!this._hass?.connection||!this.isConnected)return;let e=this._config.weather_entity,s=(e&&this._hass.states[e])?.attributes.supported_features||0,n={daily:!!(s&1),hourly:!!(s&2),twice_daily:!!(s&4)},r=n.daily?"daily":n.twice_daily?"twice_daily":null;for(let[a,c,l]of[["hourly","hourly",n.hourly],["daily",r,!!r]])this._syncSub(`fc_${a}`,l?`${e}|${c}`:null,{type:"weather/subscribe_forecast",forecast_type:c,entity_id:e},h=>{this._forecast[a]={type:c,list:h.forecast||[]},this._refresh("weather")},()=>delete this._forecast[a]);let o=this._list;this._syncSub("todo",o&&this._hass.states[o]?o:null,{type:"todo/item/subscribe",entity_id:o},a=>{this._items=a.items||[],this._pending.clear(),this._refresh("todo")},()=>this._items=null),this._syncSub("userdata",oe,{type:"frontend/subscribe_user_data",key:oe},a=>this._setUserData(a.value),()=>{},()=>this._loadUserDataFallback())}_syncSub(t,e,A,s,n,r){this._subKeys[t]===e&&(e===null||this._subs[t])||(this._unsubscribe(t),n(),this._subKeys[t]=e,e&&(this._subs[t]=this._hass.connection.subscribeMessage(s,A).catch(o=>(console.warn(`[${nt}] subscription ${t} failed`,o),r?.(o),null))))}_unsubscribe(t){let e=this._subs[t];delete this._subs[t],delete this._subKeys[t],e&&e.then(A=>A&&A()).catch(()=>{})}_setUserData(t){this._data={alarms:[],...t||Be(oe,{})||{}},this._view==="clock"&&this._clRender(),this._view==="overview"&&this._ovClock(),this._tbClock()}async _loadUserDataFallback(){try{let t=await this._hass.callWS({type:"frontend/get_user_data",key:oe});this._setUserData(t?.value)}catch{this._setUserData(null)}}async _saveUserData(){Vt(oe,this._data);try{await this._hass.callWS({type:"frontend/set_user_data",key:oe,value:this._data})}catch(t){console.warn(`[${nt}] could not store user data, using this device only`,t)}}_tick(){if(!this._built||!this._hass)return;let t=Date.now(),e=this._fmtTime(t),A=this._config.show_seconds?dt(new Date(t).getSeconds()):"",s=e+A;if(s!==this._last.clock){let r=e!==this._last.clockMin;this._last.clock=s,this._last.clockMin=e,this._view==="overview"&&this._ovClock(),this._tbClock();for(let o of["ovd-meta","trd-meta"])this._config.departure_style==="berlin"&&(this._$(o).textContent=e);r&&(this._checkAlarms(t),this._refresh("weather"))}this._view==="clock"&&this._clTick(),this._view==="music"&&this._muProgress(),this._checkTimers(t),(!this._last.depTick||t-this._last.depTick>15e3)&&(this._last.depTick=t,this._refresh("dep"));let n=+this._config.return_to_overview||0;n>0&&this._view!==this._tabs[0]&&t-this._lastInteraction>n*1e3&&!this._ringing&&!this._sheetOpen()&&this._go(this._tabs[0])}_sheetOpen(){return!this._$("ed-overlay").hidden||!this._$("al-overlay").hidden}_tbClock(){let t=this._$("tb-clock");if(!t)return;t.hidden=this._view==="overview";let e=this._nextAlarm(),A=this._timers.length||this._sw.start;t.innerHTML=`${e?'<ha-icon icon="mdi:alarm"></ha-icon>':""}${A?'<ha-icon icon="mdi:timer-sand"></ha-icon>':""}${y(this._fmtTime(Date.now()))}`}_ovClock(){let t=Date.now(),e=this._config.show_seconds?`<span class="sec">${dt(new Date(t).getSeconds())}</span>`:"";this._$("ov-time").innerHTML=`${y(this._fmtTime(t))}${e}`,this._$("ov-date").textContent=this._fmt(t,{weekday:"long",day:"numeric",month:"long"});let A=[],s=this._nextAlarm();s&&A.push(`<span><ha-icon icon="mdi:alarm"></ha-icon>${y(this._alarmWhen(s.ts))}${s.alarm.label?` \xB7 ${y(s.alarm.label)}`:""}</span>`);for(let n of this._timers)A.push(`<span><ha-icon icon="mdi:timer-sand"></ha-icon>${St(n.end-t)}${n.label?` \xB7 ${y(n.label)}`:""}</span>`);this._sw.start&&A.push(`<span><ha-icon icon="mdi:timer-outline"></ha-icon>${St(this._swElapsed())}</span>`),this._$("ov-info").innerHTML=A.join("")}_alarmWhen(t){let e=this._dayKey(Date.now()),A=this._dayKey(Date.now()+864e5),s=this._dayKey(t);return`${s===e?"":s===A?`${this._t("tomorrow")}, `:`${this._weekdayShort(t)}, `}${this._fmtTime(t)}`}_condLabel(t,e){let A=wr[this._lang];return A?.[t]?A[t]:e&&this._hass.formatEntityState?this._hass.formatEntityState(e):wr.en[t]||t||""}_isNight(t){let e=this._hass.states["sun.sun"],A=o=>{let a=new Date(o);return a.getHours()*60+a.getMinutes()},s=A(t),n=e?.attributes.next_rising?A(Date.parse(e.attributes.next_rising)):360,r=e?.attributes.next_setting?A(Date.parse(e.attributes.next_setting)):1200;return s<n||s>=r}_dailyList(){let t=this._forecast.daily;if(t?.list.length){if(t.type!=="twice_daily")return t.list;let s=new Map;for(let n of t.list){let r=this._dayKey(Date.parse(n.datetime)),o=s.get(r)||{datetime:n.datetime,temperature:-1/0,templow:1/0,precipitation_probability:0};o.temperature=Math.max(o.temperature,n.temperature??-1/0),o.templow=Math.min(o.templow,n.templow??n.temperature??1/0),o.precipitation_probability=Math.max(o.precipitation_probability,n.precipitation_probability||0),(n.is_daytime!==!1||!o.condition)&&(o.condition=n.condition),s.set(r,o)}return[...s.values()]}let e=this._forecast.hourly?.list||[],A=new Map;for(let s of e){let n=Date.parse(s.datetime),r=this._dayKey(n),o=A.get(r)||{datetime:s.datetime,temperature:-1/0,templow:1/0,precipitation_probability:0,_c:{}};o.temperature=Math.max(o.temperature,s.temperature),o.templow=Math.min(o.templow,s.temperature),o.precipitation_probability=Math.max(o.precipitation_probability,s.precipitation_probability||0),this._isNight(n)||(o._c[s.condition]=(o._c[s.condition]||0)+1),A.set(r,o)}return[...A.values()].map(s=>({...s,condition:Object.entries(s._c).sort((n,r)=>r[1]-n[1])[0]?.[0]||"cloudy"}))}_wx(){let t=this._config.weather_entity;if(!t)return{error:`<div class="msg">${this._t("not_configured")}</div>`};let e=this._hass.states[t];if(!e)return{error:`<div class="msg error">${this._t("not_found")}: ${y(t)}</div>`};if(e.state==="unavailable"||e.state==="unknown")return{error:`<div class="msg">${y(e.attributes.friendly_name||t)} ${this._t("unavailable")}</div>`};let A=Date.now(),s=this._hass.states["sun.sun"],n=e.state==="clear-night"||(s?s.state==="below_horizon":this._isNight(A)),r=this._dailyList(),o=this._dayKey(A),a=r.find(h=>this._dayKey(Date.parse(h.datetime))===o),c=e.attributes,l=a&&Number.isFinite(a.temperature)?`${this._t("high")}: ${this._round(a.temperature)}\xB0 ${this._t("low")}: ${this._round(a.templow)}\xB0`:"";return{s:e,a:c,now:A,night:n,days:r,today:a,todayKey:o,hl:l,loc:this._config.weather_location||c.friendly_name||""}}_applyGradient(t,e){if(t.classList.toggle("grad",!!this._config.weather_gradient&&!!e?.s),e?.s&&this._config.weather_gradient){let[A,s]=lc(e.s.state,e.night);t.style.setProperty("--w-a",A),t.style.setProperty("--w-b",s)}}_hoursHtml(t,e){let A=(this._forecast.hourly?.list||[]).filter(s=>Date.parse(s.datetime)>t.now-36e5).slice(0,e);return A.length?`<div class="w-hours" style="--n:${A.length}">${A.map((s,n)=>{let r=Date.parse(s.datetime),o=n===0&&r<=t.now?this._t("now_hour"):this._fmt(r,{hour:"2-digit",hour12:this._hour12}).replace(/\s?Uhr$/,""),a=s.is_daytime===!1||s.is_daytime===void 0&&this._isNight(r),c=s.precipitation_probability;return`<div class="w-hour"><span class="h">${y(o)}</span>${$e(s.condition,a)}<span class="p">${c>=20?`${this._round(c)} %`:""}</span><span>${this._round(s.temperature)}\xB0</span></div>`}).join("")}</div>`:""}_daysHtml(t,e){let A=new Date(t.now).setHours(0,0,0,0),s=t.days.filter(c=>Date.parse(c.datetime)>=A-36e5).slice(0,e);if(!s.length)return"";let n=t.a.temperature!=null&&Number.isFinite(+t.a.temperature)?+t.a.temperature:null,r=Math.min(...s.map(c=>c.templow).filter(Number.isFinite),n??1/0),o=Math.max(...s.map(c=>c.temperature).filter(Number.isFinite),n??-1/0),a=Math.max(1,o-r);return s.map(c=>{let l=Date.parse(c.datetime),h=this._dayKey(l)===t.todayKey,d=h?this._t("today"):this._weekdayShort(l),u=Number.isFinite(c.templow)?c.templow:c.temperature,p=c.temperature,f=(u-r)/a*100,m=Math.max(4,(p-u)/a*100),g=h&&n!=null?`<b style="left:${(n-r)/a*100}%"></b>`:"",_=c.precipitation_probability;return`<div class="w-day"><span>${y(d)}</span><span class="ic">${$e(c.condition,!1)}<span class="p">${_>=20?`${this._round(_)} %`:""}</span></span><span class="lo">${this._round(u)}\xB0</span><span class="bar"><i style="left:${f}%;width:${m}%;background:linear-gradient(90deg,${Hs(u)},${Hs(p)})"></i>${g}</span><span class="hi">${this._round(p)}\xB0</span></div>`}).join("")}_ovWeather(){let t=this._$("ov-weather"),e=this._wx();if(this._applyGradient(t,e),e.error){t.innerHTML=`<div class="panel-head"><span class="title">${this._t("weather")}</span></div>${e.error}`;return}let A=Math.max(0,Math.min(+this._config.forecast_hours||0,8)),s=A?this._hoursHtml(e,A):"";t.innerHTML=`
       <div class="w-top">
-        <div style="min-width:0"><div class="w-loc">${esc(w.loc)}</div><div class="w-temp">${this._round(w.a.temperature)}°</div></div>
-        <div class="w-right">${weatherSvg(w.s.state, w.night)}<span class="c">${esc(this._condLabel(w.s.state, w.s))}</span><span>${esc(w.hl)}</span></div>
+        <div style="min-width:0"><div class="w-loc">${y(e.loc)}</div><div class="w-temp">${this._round(e.a.temperature)}\xB0</div></div>
+        <div class="w-right">${$e(e.s.state,e.night)}<span class="c">${y(this._condLabel(e.s.state,e.s))}</span><span>${y(e.hl)}</span></div>
       </div>
-      ${hours ? `<div class="w-mod" style="margin-top:auto">${hours}</div>` : ""}`;
-  }
-
-  _wxRender() {
-    const left = this._$("wx-left");
-    const right = this._$("wx-right");
-    const w = this._wx();
-    this._applyGradient(left, w);
-    this._applyGradient(right, w);
-    if (w.error) {
-      left.innerHTML = w.error;
-      right.innerHTML = "";
-      return;
-    }
-    const a = w.a;
-    const r = (v) => this._round(v);
-    const tiles = [];
-    const tile = (icon, k, v, s = "") =>
-      tiles.push(`<div class="wt"><div class="k"><ha-icon icon="${icon}"></ha-icon>${esc(k)}</div><div class="v">${v}</div><div class="s">${s}</div></div>`);
-    if (a.apparent_temperature != null) tile("mdi:thermometer", this._t("feels_like"), `${r(a.apparent_temperature)}°`);
-    if (a.humidity != null) tile("mdi:water-percent", this._t("humidity"), `${r(a.humidity)}<small>%</small>`, a.dew_point != null ? esc(this._t("dew_point", `${r(a.dew_point)}°`)) : "");
-    if (a.wind_speed != null) {
-      const unit = esc(a.wind_speed_unit || "km/h");
-      let dir = "";
-      let arrow = "";
-      const b = Number.isFinite(+a.wind_bearing) ? +a.wind_bearing : null;
-      if (b != null) {
-        dir = this._t("compass")[Math.round(b / 45) % 8];
-        arrow = `<svg class="arrow" viewBox="0 0 24 24" style="transform:rotate(${b + 180}deg)"><path fill="currentColor" d="M12 2l6 18-6-4-6 4z"/></svg>`;
-      } else if (typeof a.wind_bearing === "string") dir = a.wind_bearing;
-      tile("mdi:weather-windy", this._t("wind"), `${r(a.wind_speed)}<small>${unit}</small>${arrow}`, [dir, a.wind_gust_speed != null ? this._t("gusts", `${r(a.wind_gust_speed)} ${unit}`) : ""].filter(Boolean).map(esc).join(" · "));
-    }
-    if (a.uv_index != null) {
-      const uv = +a.uv_index;
-      const lvl = this._t("uv_levels")[uv < 3 ? 0 : uv < 6 ? 1 : uv < 8 ? 2 : uv < 11 ? 3 : 4];
-      tile("mdi:sun-wireless-outline", this._t("uv"), r(uv), esc(lvl));
-    }
-    if (a.pressure != null) tile("mdi:gauge", this._t("pressure"), `${r(a.pressure)}<small>${esc(a.pressure_unit || "hPa")}</small>`);
-    if (a.visibility != null) tile("mdi:eye-outline", this._t("visibility"), `${r(a.visibility)}<small>${esc(a.visibility_unit || "km")}</small>`);
-    if (a.cloud_coverage != null) tile("mdi:cloud-outline", this._t("clouds"), `${r(a.cloud_coverage)}<small>%</small>`);
-    const prec = w.today?.precipitation;
-    if (prec != null) tile("mdi:water-outline", this._t("precipitation"), `${Math.round(prec * 10) / 10}<small>${esc(a.precipitation_unit || "mm")}</small>`, this._t("today_total"));
-    const sun = this._hass.states["sun.sun"];
-    if (sun?.attributes.next_rising) {
-      const rise = Date.parse(sun.attributes.next_rising);
-      const set = Date.parse(sun.attributes.next_setting);
-      const first = Math.min(rise, set);
-      tile(
-        first === rise ? "mdi:weather-sunset-up" : "mdi:weather-sunset-down",
-        first === rise ? this._t("sunrise") : this._t("sunset"),
-        esc(this._fmtTime(first)),
-        esc(`${first === rise ? this._t("sunset") : this._t("sunrise")} ${this._fmtTime(first === rise ? set : rise)}`)
-      );
-    }
-
-    left.innerHTML = `
+      ${s?`<div class="w-mod" style="margin-top:auto">${s}</div>`:""}`}_wxRender(){let t=this._$("wx-left"),e=this._$("wx-right"),A=this._wx();if(this._applyGradient(t,A),this._applyGradient(e,A),A.error){t.innerHTML=A.error,e.innerHTML="";return}let s=A.a,n=d=>this._round(d),r=[],o=(d,u,p,f="")=>r.push(`<div class="wt"><div class="k"><ha-icon icon="${d}"></ha-icon>${y(u)}</div><div class="v">${p}</div><div class="s">${f}</div></div>`);if(s.apparent_temperature!=null&&o("mdi:thermometer",this._t("feels_like"),`${n(s.apparent_temperature)}\xB0`),s.humidity!=null&&o("mdi:water-percent",this._t("humidity"),`${n(s.humidity)}<small>%</small>`,s.dew_point!=null?y(this._t("dew_point",`${n(s.dew_point)}\xB0`)):""),s.wind_speed!=null){let d=y(s.wind_speed_unit||"km/h"),u="",p="",f=Number.isFinite(+s.wind_bearing)?+s.wind_bearing:null;f!=null?(u=this._t("compass")[Math.round(f/45)%8],p=`<svg class="arrow" viewBox="0 0 24 24" style="transform:rotate(${f+180}deg)"><path fill="currentColor" d="M12 2l6 18-6-4-6 4z"/></svg>`):typeof s.wind_bearing=="string"&&(u=s.wind_bearing),o("mdi:weather-windy",this._t("wind"),`${n(s.wind_speed)}<small>${d}</small>${p}`,[u,s.wind_gust_speed!=null?this._t("gusts",`${n(s.wind_gust_speed)} ${d}`):""].filter(Boolean).map(y).join(" \xB7 "))}if(s.uv_index!=null){let d=+s.uv_index,u=this._t("uv_levels")[d<3?0:d<6?1:d<8?2:d<11?3:4];o("mdi:sun-wireless-outline",this._t("uv"),n(d),y(u))}s.pressure!=null&&o("mdi:gauge",this._t("pressure"),`${n(s.pressure)}<small>${y(s.pressure_unit||"hPa")}</small>`),s.visibility!=null&&o("mdi:eye-outline",this._t("visibility"),`${n(s.visibility)}<small>${y(s.visibility_unit||"km")}</small>`),s.cloud_coverage!=null&&o("mdi:cloud-outline",this._t("clouds"),`${n(s.cloud_coverage)}<small>%</small>`);let a=A.today?.precipitation;a!=null&&o("mdi:water-outline",this._t("precipitation"),`${Math.round(a*10)/10}<small>${y(s.precipitation_unit||"mm")}</small>`,this._t("today_total"));let c=this._hass.states["sun.sun"];if(c?.attributes.next_rising){let d=Date.parse(c.attributes.next_rising),u=Date.parse(c.attributes.next_setting),p=Math.min(d,u);o(p===d?"mdi:weather-sunset-up":"mdi:weather-sunset-down",p===d?this._t("sunrise"):this._t("sunset"),y(this._fmtTime(p)),y(`${p===d?this._t("sunset"):this._t("sunrise")} ${this._fmtTime(p===d?u:d)}`))}t.innerHTML=`
       <div class="wx-hero">
-        <div class="w-loc">${esc(w.loc)}</div>
-        <div class="big">${this._round(a.temperature)}°${weatherSvg(w.s.state, w.night)}</div>
-        <div class="c">${esc(this._condLabel(w.s.state, w.s))}</div>
-        <div class="hl">${esc(w.hl)}</div>
+        <div class="w-loc">${y(A.loc)}</div>
+        <div class="big">${this._round(s.temperature)}\xB0${$e(A.s.state,A.night)}</div>
+        <div class="c">${y(this._condLabel(A.s.state,A.s))}</div>
+        <div class="hl">${y(A.hl)}</div>
       </div>
-      <div class="wx-tiles">${tiles.join("")}</div>`;
-
-    const nD = Math.max(1, Math.min(+this._config.forecast_days || 10, 15));
-    const days = this._daysHtml(w, nD);
-    right.innerHTML = `
-      ${this._hours24Html(w)}
+      <div class="wx-tiles">${r.join("")}</div>`;let l=Math.max(1,Math.min(+this._config.forecast_days||10,15)),h=this._daysHtml(A,l);e.innerHTML=`
+      ${this._hours24Html(A)}
       <div class="w-mod" style="display:flex;flex-direction:column;min-height:0;flex:1">
-        <div class="w-mod-h"><ha-icon icon="mdi:calendar-blank-outline"></ha-icon>${this._t("daily", Math.min(nD, w.days.length))}</div>
-        <div class="w-days wx-days">${days}</div>
-      </div>`;
-  }
-
-  /** 24 h strip with a temperature curve. */
-  _hours24Html(w) {
-    const list = (this._forecast.hourly?.list || []).filter((f) => Date.parse(f.datetime) > w.now - 3600000).slice(0, 24);
-    if (!list.length) return "";
-    const cw = 54;
-    const n = list.length;
-    const temps = list.map((f) => +f.temperature);
-    const min = Math.min(...temps);
-    const max = Math.max(...temps);
-    const span = Math.max(1, max - min);
-    const H = 64;
-    const pts = temps.map((t, i) => [i * cw + cw / 2, 20 + (1 - (t - min) / span) * (H - 30)]);
-    const path = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
-    const area = `${path} L${pts[n - 1][0]} ${H} L${pts[0][0]} ${H} Z`;
-    const stops = temps.map((t, i) => `<stop offset="${n > 1 ? (i / (n - 1)) * 100 : 0}%" stop-color="${tempColor(t)}"/>`).join("");
-    const labels = pts.map((p, i) => `<text x="${p[0]}" y="${p[1] - 8}">${this._round(temps[i])}°</text>`).join("");
-    const width = n * cw;
-    const row = (cells) => `<div class="hs-row">${cells.join("")}</div>`;
-    return `<div class="w-mod">
+        <div class="w-mod-h"><ha-icon icon="mdi:calendar-blank-outline"></ha-icon>${this._t("daily",Math.min(l,A.days.length))}</div>
+        <div class="w-days wx-days">${h}</div>
+      </div>`}_hours24Html(t){let e=(this._forecast.hourly?.list||[]).filter(g=>Date.parse(g.datetime)>t.now-36e5).slice(0,24);if(!e.length)return"";let A=54,s=e.length,n=e.map(g=>+g.temperature),r=Math.min(...n),o=Math.max(...n),a=Math.max(1,o-r),c=64,l=n.map((g,_)=>[_*A+A/2,20+(1-(g-r)/a)*(c-30)]),h=l.map((g,_)=>`${_?"L":"M"}${g[0].toFixed(1)} ${g[1].toFixed(1)}`).join(" "),d=`${h} L${l[s-1][0]} ${c} L${l[0][0]} ${c} Z`,u=n.map((g,_)=>`<stop offset="${s>1?_/(s-1)*100:0}%" stop-color="${Hs(g)}"/>`).join(""),p=l.map((g,_)=>`<text x="${g[0]}" y="${g[1]-8}">${this._round(n[_])}\xB0</text>`).join(""),f=s*A,m=g=>`<div class="hs-row">${g.join("")}</div>`;return`<div class="w-mod">
       <div class="w-mod-h"><ha-icon icon="mdi:clock-outline"></ha-icon>${this._t("hours24")}</div>
-      <div class="hs"><div class="hs-in" style="--n:${n};--cw:${cw}px;width:${width}px">
-        ${row(
-          list.map((f, i) => {
-            const ts = Date.parse(f.datetime);
-            return `<span class="h">${i === 0 && ts <= w.now ? this._t("now_hour") : esc(this._fmt(ts, { hour: "2-digit", hour12: this._hour12 }).replace(/\s?Uhr$/, ""))}</span>`;
-          })
-        )}
-        ${row(list.map((f) => weatherSvg(f.condition, f.is_daytime === false || (f.is_daytime === undefined && this._isNight(Date.parse(f.datetime))))))}
-        ${row(list.map((f) => `<span class="p">${f.precipitation_probability >= 10 ? `${this._round(f.precipitation_probability)} %` : ""}</span>`))}
-        <svg class="chart" width="${width}" height="${H}" viewBox="0 0 ${width} ${H}">
-          <defs><linearGradient id="tg" x1="0" x2="1" y1="0" y2="0">${stops}</linearGradient>
+      <div class="hs"><div class="hs-in" style="--n:${s};--cw:${A}px;width:${f}px">
+        ${m(e.map((g,_)=>{let x=Date.parse(g.datetime);return`<span class="h">${_===0&&x<=t.now?this._t("now_hour"):y(this._fmt(x,{hour:"2-digit",hour12:this._hour12}).replace(/\s?Uhr$/,""))}</span>`}))}
+        ${m(e.map(g=>$e(g.condition,g.is_daytime===!1||g.is_daytime===void 0&&this._isNight(Date.parse(g.datetime)))))}
+        ${m(e.map(g=>`<span class="p">${g.precipitation_probability>=10?`${this._round(g.precipitation_probability)} %`:""}</span>`))}
+        <svg class="chart" width="${f}" height="${c}" viewBox="0 0 ${f} ${c}">
+          <defs><linearGradient id="tg" x1="0" x2="1" y1="0" y2="0">${u}</linearGradient>
           <linearGradient id="ta" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
-          <path d="${area}" fill="url(#ta)"/>
-          <path d="${path}" fill="none" stroke="url(#tg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          ${labels}
+          <path d="${d}" fill="url(#ta)"/>
+          <path d="${h}" fill="none" stroke="url(#tg)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          ${p}
         </svg>
       </div></div>
-    </div>`;
-  }
-
-  /* ================================================================ floor plan / home */
-
-  _roomAt(i) {
-    return (this._config.floorplan?.rooms || [])[i];
-  }
-
-  _homeEntityIds() {
-    const rooms = (this._config.floorplan?.rooms || []).map((r) => r.entity).filter(Boolean);
-    const extra = (this._config.home_entities || []).map((e) => (typeof e === "string" ? e : e.entity)).filter(Boolean);
-    return [...new Set([...rooms, ...extra])];
-  }
-
-  _renderPlan(body, force) {
-    if (!body) return;
-    const fp = this._config.floorplan || {};
-    for (const t of this.shadowRoot.querySelectorAll(".plan-title")) t.textContent = fp.title || this._t("floorplan");
-    if (!fp.image) {
-      body.innerHTML = `<div class="plan-ph"><div><ha-icon icon="mdi:floor-plan"></ha-icon>${esc(this._t("floorplan_hint"))}</div></div>`;
-      return;
-    }
-    if (force || !body.querySelector(".plan-wrap")) {
-      body.innerHTML = `<div class="plan-wrap"><img alt="" src="${esc(fp.image)}" class="${fp.invert ? "invert" : ""}"/><div class="rooms"></div></div>`;
-      body.querySelector("img").addEventListener("load", () => this._fitPlan(body));
-    }
-    const rooms = fp.rooms || [];
-    let on = 0;
-    body.querySelector(".rooms").innerHTML = rooms
-      .map((r, i) => {
-        const s = r.entity ? this._hass.states[r.entity] : undefined;
-        const lit = isOn(s);
-        if (lit) on++;
-        const label = r.label === false ? "" : r.name || "";
-        return `<div class="room${lit ? " on" : ""}" data-room="${i}" style="left:${+r.x || 0}%;top:${+r.y || 0}%;width:${+r.w || 10}%;height:${
-          +r.h || 10
-        }%">${label || r.icon ? `<span class="rl">${r.icon ? `<ha-icon icon="${esc(r.icon)}"></ha-icon>` : ""}${esc(label)}</span>` : ""}</div>`;
-      })
-      .join("");
-    const meta = rooms.some((r) => r.entity) ? this._t("lights_on", on) : "";
-    if (body.id === "ov-plan") this._$("ovp-meta").textContent = meta;
-    else this._$("hm-meta").textContent = meta;
-    this._fitPlan(body);
-  }
-
-  _fitPlan(body) {
-    const wrap = body?.querySelector(".plan-wrap");
-    const img = wrap?.querySelector("img");
-    if (!wrap || !img || !img.naturalWidth || !body.clientWidth) return;
-    const ar = img.naturalWidth / img.naturalHeight;
-    let w = body.clientWidth;
-    let h = w / ar;
-    if (h > body.clientHeight) {
-      h = body.clientHeight;
-      w = h * ar;
-    }
-    wrap.style.width = `${Math.floor(w)}px`;
-    wrap.style.height = `${Math.floor(h)}px`;
-  }
-
-  _homeRender() {
-    this._renderPlan(this._$("hm-plan"), !this._$("hm-plan").querySelector(".plan-wrap"));
-    const ids = this._homeEntityIds();
-    const names = {};
-    for (const r of this._config.floorplan?.rooms || []) if (r.entity && r.name) names[r.entity] = r.name;
-    for (const e of this._config.home_entities || []) if (typeof e === "object" && e.entity && e.name) names[e.entity] = e.name;
-    const el = this._$("hm-ents");
-    if (!ids.length) {
-      el.innerHTML = `<div class="msg">${esc(this._t("no_devices"))}</div>`;
-      return;
-    }
-    el.innerHTML = `<div class="ents">${ids
-      .map((id) => {
-        const s = this._hass.states[id];
-        const name = names[id] || s?.attributes.friendly_name || id;
-        const icon = s?.attributes.icon || (id.startsWith("light.") ? "mdi:lightbulb" : id.startsWith("switch.") ? "mdi:power-socket-eu" : "mdi:circle-outline");
-        const state = s ? (this._hass.formatEntityState ? this._hass.formatEntityState(s) : s.state) : this._t("not_found");
-        return `<div class="ent${isOn(s) ? " on" : ""}" data-entity="${esc(id)}"><ha-icon icon="${esc(icon)}"></ha-icon><span class="n">${esc(name)}</span><span class="st">${esc(state)}</span></div>`;
-      })
-      .join("")}</div>`;
-  }
-
-  _onEntityPress(entity, hold) {
-    if (!entity) return;
-    if (hold) {
-      this.dispatchEvent(new CustomEvent("hass-more-info", { detail: { entityId: entity }, bubbles: true, composed: true }));
-    } else {
-      this._hass.callService("homeassistant", "toggle", {}, { entity_id: entity }).catch((e) => this._notify(e));
-    }
-  }
-
-  /* ================================================================ shopping list */
-
-  get _todoSupportsDesc() {
-    const s = this._hass.states[this._list];
-    return ((s?.attributes.supported_features || 0) & 64) !== 0;
-  }
-
-  _todoState() {
-    const id = this._list;
-    const s = id && this._hass.states[id];
-    if (!id) return { error: `<div class="msg">${this._t("not_configured")}</div>` };
-    if (!s) return { error: `<div class="msg error">${this._t("not_found")}: ${esc(id)}</div>` };
-    const items = this._items || [];
-    return {
-      s,
-      loading: this._items === null,
-      open: items.filter((i) => i.status === "needs_action"),
-      done: items.filter((i) => i.status === "completed"),
-      title: this._config.title_todo || this._t("shopping"),
-      listName: s.attributes.friendly_name || id,
-    };
-  }
-
-  _ovTodo() {
-    const t = this._todoState();
-    this._$("ovt-title").textContent = t.title || this._t("shopping");
-    this._$("ovt-count").textContent = t.open ? this._t("items", t.open.length) : "";
-    const el = this._$("ov-todo");
-    if (t.error) return void (el.innerHTML = t.error);
-    if (t.loading) return void (el.innerHTML = "");
-    if (!t.open.length) return void (el.innerHTML = `<div class="msg">${this._t("empty_list")}</div>`);
-    const max = 16;
-    el.innerHTML = `<div class="ov-items">${t.open
-      .slice(0, max)
-      .map((i) => `<span>${esc(i.summary)}${i.description ? `<small>${esc(i.description)}</small>` : ""}</span>`)
-      .join("")}${t.open.length > max ? `<span class="more">${esc(this._t("more", t.open.length - max))}</span>` : ""}</div>`;
-  }
-
-  _bindShopping() {
-    this._$("add-form").addEventListener("submit", (ev) => {
-      ev.preventDefault();
-      this._addItem();
-    });
-    this._$("add-input").addEventListener("input", () => this._renderSuggestions());
-    this._$("add-sugg").addEventListener("click", (ev) => {
-      const chip = ev.target.closest("[data-reopen]");
-      if (!chip) return;
-      ev.preventDefault();
-      this._reopen(chip.dataset.reopen);
-      this._$("add-input").value = "";
-      this._renderSuggestions();
-    });
-    this._$("sh-lists").addEventListener("click", (ev) => {
-      const chip = ev.target.closest("[data-list]");
-      if (!chip || chip.dataset.list === this._list) return;
-      this._list = chip.dataset.list;
-      this._items = null;
-      this._ensureSubscriptions();
-      this._shRender();
-    });
-    this._$("sh-sort").addEventListener("click", (ev) => {
-      const b = ev.target.closest("[data-sort]");
-      if (!b) return;
-      this._shSort = b.dataset.sort;
-      lsSet("idc_sh_sort", this._shSort);
-      this._shRender();
-    });
-    const press = (el, hold, ev) => this._onTodoPress(el, hold, ev);
-    this._bindPress(this._$("sh-items"), "[data-uid]", press);
-    this._bindPress(this._$("sh-recent"), "[data-reopen]", press);
-    this._$("sh-fav").addEventListener("click", (ev) => {
-      const chip = ev.target.closest("[data-fav]");
-      if (!chip) return;
-      this._$("add-input").value = chip.dataset.fav;
-      this._addItem();
-    });
-
-    // edit sheet
-    const close = () => this._closeEdit();
-    this._$("ed-overlay").addEventListener("click", (ev) => {
-      if (ev.target.id === "ed-overlay") close();
-    });
-    this._$("ed-sheet").addEventListener("keydown", (ev) => ev.key === "Escape" && close());
-    this._$("ed-chips").addEventListener("click", (ev) => {
-      const chip = ev.target.closest("[data-spec]");
-      if (!chip) return;
-      ev.preventDefault();
-      this._$("ed-spec").value = chip.dataset.spec;
-    });
-    this._$("ed-sheet").addEventListener("submit", (ev) => {
-      ev.preventDefault();
-      this._saveEdit();
-    });
-    this._$("ed-done").addEventListener("click", () => this._saveEdit("completed"));
-    this._$("ed-del").addEventListener("click", () => {
-      const item = this._editItem;
-      close();
-      if (item) this._callTodo("remove_item", { item: item.uid });
-    });
-  }
-
-  _shRender() {
-    const t = this._todoState();
-    this._$("sh-title").textContent = t.title || this._t("shopping");
-    this._$("sh-count").textContent = t.open ? `${this._lists.length < 2 ? `${t.listName} · ` : ""}${this._t("items", t.open.length)}` : "";
-    this._$("add-input").placeholder = this._t("add_placeholder");
-    this._$("sh-hint").textContent = this._t("shop_hint");
-    for (const b of this._$("sh-sort").children) {
-      b.textContent = this._t(b.dataset.sort === "az" ? "sort_az" : "sort_list");
-      b.classList.toggle("sel", b.dataset.sort === this._shSort);
-    }
-    const lists = this._$("sh-lists");
-    lists.hidden = this._lists.length < 2;
-    lists.innerHTML = this._lists
-      .map((id) => `<button class="chip${id === this._list ? " sel" : ""}" data-list="${esc(id)}">${esc(this._hass.states[id]?.attributes.friendly_name || id)}</button>`)
-      .join("");
-    this._$("add-form").hidden = !!t.error;
-    const items = this._$("sh-items");
-    const recent = this._$("sh-recent");
-    if (t.error) {
-      items.innerHTML = t.error;
-      recent.innerHTML = "";
-      return;
-    }
-    if (t.loading) {
-      items.innerHTML = "";
-      recent.innerHTML = "";
-      return;
-    }
-    const open = this._shSort === "az" ? [...t.open].sort((a, b) => a.summary.localeCompare(b.summary, this._lang)) : t.open;
-    const scroll = items.scrollTop;
-    items.innerHTML = open.length
-      ? `<div class="items">${open
-          .map(
-            (i) => `<div class="item${this._pending.has(i.uid) ? " pending" : ""}" data-uid="${esc(i.uid)}" role="button">
-              <span class="n">${esc(i.summary)}</span>${i.description ? `<span class="s">${esc(i.description)}</span>` : ""}
+    </div>`}_roomAt(t){return(this._config.floorplan?.rooms||[])[t]}_homeEntityIds(){let t=(this._config.floorplan?.rooms||[]).map(A=>A.entity).filter(Boolean),e=(this._config.home_entities||[]).map(A=>typeof A=="string"?A:A.entity).filter(Boolean);return[...new Set([...t,...e])]}_renderPlan(t,e){if(!t)return;let A=this._config.floorplan||{};for(let o of this.shadowRoot.querySelectorAll(".plan-title"))o.textContent=A.title||this._t("floorplan");if(!A.image){t.innerHTML=`<div class="plan-ph"><div><ha-icon icon="mdi:floor-plan"></ha-icon>${y(this._t("floorplan_hint"))}</div></div>`;return}(e||!t.querySelector(".plan-wrap"))&&(t.innerHTML=`<div class="plan-wrap"><img alt="" src="${y(A.image)}" class="${A.invert?"invert":""}"/><div class="rooms"></div></div>`,t.querySelector("img").addEventListener("load",()=>this._fitPlan(t)));let s=A.rooms||[],n=0;t.querySelector(".rooms").innerHTML=s.map((o,a)=>{let c=o.entity?this._hass.states[o.entity]:void 0,l=Ir(c);l&&n++;let h=o.label===!1?"":o.name||"";return`<div class="room${l?" on":""}" data-room="${a}" style="left:${+o.x||0}%;top:${+o.y||0}%;width:${+o.w||10}%;height:${+o.h||10}%">${h||o.icon?`<span class="rl">${o.icon?`<ha-icon icon="${y(o.icon)}"></ha-icon>`:""}${y(h)}</span>`:""}</div>`}).join("");let r=s.some(o=>o.entity)?this._t("lights_on",n):"";t.id==="ov-plan"?this._$("ovp-meta").textContent=r:this._$("hm-meta").textContent=r,this._fitPlan(t)}_fitPlan(t){let e=t?.querySelector(".plan-wrap"),A=e?.querySelector("img");if(!e||!A||!A.naturalWidth||!t.clientWidth)return;let s=A.naturalWidth/A.naturalHeight,n=t.clientWidth,r=n/s;r>t.clientHeight&&(r=t.clientHeight,n=r*s),e.style.width=`${Math.floor(n)}px`,e.style.height=`${Math.floor(r)}px`}_homeRender(){this._renderPlan(this._$("hm-plan"),!this._$("hm-plan").querySelector(".plan-wrap"));let t=this._homeEntityIds(),e={};for(let s of this._config.floorplan?.rooms||[])s.entity&&s.name&&(e[s.entity]=s.name);for(let s of this._config.home_entities||[])typeof s=="object"&&s.entity&&s.name&&(e[s.entity]=s.name);let A=this._$("hm-ents");if(!t.length){A.innerHTML=`<div class="msg">${y(this._t("no_devices"))}</div>`;return}A.innerHTML=`<div class="ents">${t.map(s=>{let n=this._hass.states[s],r=e[s]||n?.attributes.friendly_name||s,o=n?.attributes.icon||(s.startsWith("light.")?"mdi:lightbulb":s.startsWith("switch.")?"mdi:power-socket-eu":"mdi:circle-outline"),a=n?this._hass.formatEntityState?this._hass.formatEntityState(n):n.state:this._t("not_found");return`<div class="ent${Ir(n)?" on":""}" data-entity="${y(s)}"><ha-icon icon="${y(o)}"></ha-icon><span class="n">${y(r)}</span><span class="st">${y(a)}</span></div>`}).join("")}</div>`}_onEntityPress(t,e){t&&(e?this.dispatchEvent(new CustomEvent("hass-more-info",{detail:{entityId:t},bubbles:!0,composed:!0})):this._hass.callService("homeassistant","toggle",{},{entity_id:t}).catch(A=>this._notify(A)))}get _todoSupportsDesc(){return((this._hass.states[this._list]?.attributes.supported_features||0)&64)!==0}_todoState(){let t=this._list,e=t&&this._hass.states[t];if(!t)return{error:`<div class="msg">${this._t("not_configured")}</div>`};if(!e)return{error:`<div class="msg error">${this._t("not_found")}: ${y(t)}</div>`};let A=this._items||[];return{s:e,loading:this._items===null,open:A.filter(s=>s.status==="needs_action"),done:A.filter(s=>s.status==="completed"),title:this._config.title_todo||this._t("shopping"),listName:e.attributes.friendly_name||t}}_ovTodo(){let t=this._todoState();this._$("ovt-title").textContent=t.title||this._t("shopping"),this._$("ovt-count").textContent=t.open?this._t("items",t.open.length):"";let e=this._$("ov-todo");if(t.error)return void(e.innerHTML=t.error);if(t.loading)return void(e.innerHTML="");if(!t.open.length)return void(e.innerHTML=`<div class="msg">${this._t("empty_list")}</div>`);let A=16;e.innerHTML=`<div class="ov-items">${t.open.slice(0,A).map(s=>`<span>${y(s.summary)}${s.description?`<small>${y(s.description)}</small>`:""}</span>`).join("")}${t.open.length>A?`<span class="more">${y(this._t("more",t.open.length-A))}</span>`:""}</div>`}_bindShopping(){this._$("add-form").addEventListener("submit",A=>{A.preventDefault(),this._addItem()}),this._$("add-input").addEventListener("input",()=>this._renderSuggestions()),this._$("add-sugg").addEventListener("click",A=>{let s=A.target.closest("[data-reopen]");s&&(A.preventDefault(),this._reopen(s.dataset.reopen),this._$("add-input").value="",this._renderSuggestions())}),this._$("sh-lists").addEventListener("click",A=>{let s=A.target.closest("[data-list]");!s||s.dataset.list===this._list||(this._list=s.dataset.list,this._items=null,this._ensureSubscriptions(),this._shRender())}),this._$("sh-sort").addEventListener("click",A=>{let s=A.target.closest("[data-sort]");s&&(this._shSort=s.dataset.sort,Vt("idc_sh_sort",this._shSort),this._shRender())});let t=(A,s,n)=>this._onTodoPress(A,s,n);this._bindPress(this._$("sh-items"),"[data-uid]",t),this._bindPress(this._$("sh-recent"),"[data-reopen]",t),this._$("sh-fav").addEventListener("click",A=>{let s=A.target.closest("[data-fav]");s&&(this._$("add-input").value=s.dataset.fav,this._addItem())});let e=()=>this._closeEdit();this._$("ed-overlay").addEventListener("click",A=>{A.target.id==="ed-overlay"&&e()}),this._$("ed-sheet").addEventListener("keydown",A=>A.key==="Escape"&&e()),this._$("ed-chips").addEventListener("click",A=>{let s=A.target.closest("[data-spec]");s&&(A.preventDefault(),this._$("ed-spec").value=s.dataset.spec)}),this._$("ed-sheet").addEventListener("submit",A=>{A.preventDefault(),this._saveEdit()}),this._$("ed-done").addEventListener("click",()=>this._saveEdit("completed")),this._$("ed-del").addEventListener("click",()=>{let A=this._editItem;e(),A&&this._callTodo("remove_item",{item:A.uid})})}_shRender(){let t=this._todoState();this._$("sh-title").textContent=t.title||this._t("shopping"),this._$("sh-count").textContent=t.open?`${this._lists.length<2?`${t.listName} \xB7 `:""}${this._t("items",t.open.length)}`:"",this._$("add-input").placeholder=this._t("add_placeholder"),this._$("sh-hint").textContent=this._t("shop_hint");for(let l of this._$("sh-sort").children)l.textContent=this._t(l.dataset.sort==="az"?"sort_az":"sort_list"),l.classList.toggle("sel",l.dataset.sort===this._shSort);let e=this._$("sh-lists");e.hidden=this._lists.length<2,e.innerHTML=this._lists.map(l=>`<button class="chip${l===this._list?" sel":""}" data-list="${y(l)}">${y(this._hass.states[l]?.attributes.friendly_name||l)}</button>`).join(""),this._$("add-form").hidden=!!t.error;let A=this._$("sh-items"),s=this._$("sh-recent");if(t.error){A.innerHTML=t.error,s.innerHTML="";return}if(t.loading){A.innerHTML="",s.innerHTML="";return}let n=this._shSort==="az"?[...t.open].sort((l,h)=>l.summary.localeCompare(h.summary,this._lang)):t.open,r=A.scrollTop;A.innerHTML=n.length?`<div class="items">${n.map(l=>`<div class="item${this._pending.has(l.uid)?" pending":""}" data-uid="${y(l.uid)}" role="button">
+              <span class="n">${y(l.summary)}</span>${l.description?`<span class="s">${y(l.description)}</span>`:""}
               <span class="e" data-edit="1"><ha-icon icon="mdi:pencil-outline"></ha-icon></span>
-            </div>`
-          )
-          .join("")}</div>`
-      : `<div class="msg">${this._t("empty_list")}</div>`;
-    items.scrollTop = scroll;
+            </div>`).join("")}</div>`:`<div class="msg">${this._t("empty_list")}</div>`,A.scrollTop=r;let o=new Set(t.open.map(l=>l.summary.toLowerCase())),a=t.done.filter(l=>!o.has(l.summary.toLowerCase())).slice(0,Math.max(0,+this._config.show_completed||0));s.innerHTML=a.length?`<div class="chips">${a.map(l=>`<button class="chip" data-reopen="${y(l.uid)}"><ha-icon icon="mdi:plus" style="--mdc-icon-size:15px"></ha-icon>${y(l.summary)}</button>`).join("")}</div>`:'<div class="msg">\u2013</div>';let c=Array.isArray(this._config.quick_items)?this._config.quick_items:[];this._$("sh-fav-wrap").hidden=!c.length,this._$("sh-fav").innerHTML=c.map(l=>{let h=o.has(String(l).toLowerCase());return`<button class="chip${h?" sel":""}" data-fav="${y(l)}"${h?" disabled":""}>${y(l)}</button>`}).join(""),this._renderSuggestions()}_renderSuggestions(){let t=this._$("add-sugg"),e=this._$("add-input").value.trim().toLowerCase().split(this._config.spec_separator||"\0")[0].trim();if(!e||!this._items)return void(t.innerHTML="");let A=new Set(this._items.filter(n=>n.status==="needs_action").map(n=>n.summary.toLowerCase())),s=this._items.filter(n=>n.status==="completed"&&!A.has(n.summary.toLowerCase())&&n.summary.toLowerCase().includes(e)).sort((n,r)=>n.summary.toLowerCase().indexOf(e)-r.summary.toLowerCase().indexOf(e)).slice(0,8);t.innerHTML=s.map(n=>`<button class="chip" data-reopen="${y(n.uid)}"><ha-icon icon="mdi:history" style="--mdc-icon-size:15px"></ha-icon>${y(n.summary)}</button>`).join("")}_onTodoPress(t,e,A){if(t.dataset.reopen)return e?this._openEdit(t.dataset.reopen):(t.disabled=!0,this._reopen(t.dataset.reopen));let s=t.dataset.uid;if(e||A?.target?.closest?.("[data-edit]"))return this._openEdit(s);if(this._pending.has(s))return;let n=this._items?.find(r=>r.uid===s);this._pending.add(s),t.classList.add("pending"),this._callTodo("update_item",{item:s,status:"completed"},s).then(r=>{r&&n&&this._toast(this._t("completed_toast",n.summary),()=>this._reopen(s))})}_reopen(t){return this._callTodo("update_item",{item:t,status:"needs_action"})}_callTodo(t,e,A){return this._hass.callService("todo",t,e,{entity_id:this._list}).then(()=>!0).catch(s=>(A&&this._pending.delete(A),this._refresh("todo"),this._notify(s),!1))}_addItem(){let t=this._$("add-input"),e=t.value.trim();if(!e||!this._items)return;let A=e,s,n=this._config.spec_separator;if(n&&this._todoSupportsDesc&&e.includes(n)){let a=e.indexOf(n);A=e.slice(0,a).trim(),s=e.slice(a+n.length).trim()||void 0}if(!A)return;t.value="",this._renderSuggestions();let r=this._items.find(a=>a.summary.toLowerCase()===A.toLowerCase()),o;if(r){if(r.status==="needs_action"&&!s)return;let a={item:r.uid,status:"needs_action"};s&&(a.description=s),o=this._callTodo("update_item",a)}else{let a={item:A};s&&(a.description=s),o=this._callTodo("add_item",a)}o.then(a=>{a||(t.value=e)})}_openEdit(t){let e=this._items?.find(s=>s.uid===t);if(!e)return;this._editItem=e,this._$("ed-done").hidden=e.status!=="needs_action",this._$("ed-name").value=e.summary,this._$("ed-spec").value=e.description||"",this._$("ed-spec-wrap").hidden=!this._todoSupportsDesc;let A=Array.isArray(this._config.spec_suggestions)?this._config.spec_suggestions:[];this._$("ed-chips").innerHTML=A.map(s=>`<button type="button" class="chip" data-spec="${y(s)}">${y(s)}</button>`).join(""),this._$("ed-overlay").hidden=!1,setTimeout(()=>(this._todoSupportsDesc?this._$("ed-spec"):this._$("ed-name")).focus(),50)}_closeEdit(){this._$("ed-overlay").hidden=!0,this._editItem=null,this.shadowRoot.activeElement?.blur?.()}_saveEdit(t){let e=this._editItem;if(!e)return this._closeEdit();let A=this._$("ed-name").value.trim(),s=this._$("ed-spec").value.trim(),n={item:e.uid};A&&A!==e.summary&&(n.rename=A),this._todoSupportsDesc&&s!==(e.description||"")&&(n.description=s),t&&(n.status=t),this._closeEdit(),Object.keys(n).length>1&&this._callTodo("update_item",n)}_toast(t,e){let A=this._$("toast");clearTimeout(this._toastTimer),A.innerHTML=`<span>${y(t)}</span>${e?`<button class="btn">${this._t("undo")}</button>`:""}`,A.hidden=!1,A.querySelector("button")?.addEventListener("click",()=>{A.hidden=!0,e()}),this._toastTimer=setTimeout(()=>A.hidden=!0,5e3)}_notify(t){console.error(`[${nt}]`,t),this.dispatchEvent(new CustomEvent("hass-notification",{detail:{message:t?.message||String(t)},bubbles:!0,composed:!0}))}_readField(t,e,A){let s={...this._config.departure_fields||{},...A.fields||{}};return s[e]?Gs(t,s[e]):Ac(t,tc[e])}_collectDepartures(){let t=Date.now(),e=[],A=[],s=new Set,n=0;this._depConf.forEach((l,h)=>{let d=this._hass.states[l.entity];if(!d)return void A.push(l.entity);d.last_updated&&(n=Math.max(n,Date.parse(d.last_updated)||0));let u=l.name||d.attributes.friendly_name||l.entity,p=l.attribute||this._config.departures_attribute,f=p?Gs(d.attributes,p):void 0;if(!p){let _=Xa.find(x=>Array.isArray(d.attributes[x]));f=_?d.attributes[_]:Object.values(d.attributes).find(x=>Array.isArray(x)&&x.length&&typeof x[0]=="object")}let m=!Array.isArray(f),g=m?[{__state:d.state}]:f;for(let _ of g){if(!_||typeof _!="object")continue;let x=this._normalize(_,d.attributes,l,t,m);if(!x)continue;let b=`${x.line}|${x.destination}|${Math.round(x.ts/6e4)}`;s.has(b)||(s.add(b),x.group=u,x.groupIdx=h,e.push(x))}});let r=(this._config.line_filter||[]).map(l=>String(l).toLowerCase()),o=(this._config.destination_exclude||[]).map(l=>String(l).toLowerCase()),a=+this._config.hide_below_minutes||0;return{list:e.filter(l=>l.ts>=t-3e4).filter(l=>a<=0||(l.ts-t)/6e4>=a).filter(l=>!r.length||r.includes(l.line.toLowerCase())).filter(l=>!o.some(h=>l.destination.toLowerCase().includes(h))).sort((l,h)=>(this._config.group_departures?l.groupIdx-h.groupIdx:0)||l.ts-h.ts),errors:A,now:t,updated:n}}_normalize(t,e,A,s,n){let r=m=>this._readField(t,m,A)??this._readField(e,m,A),o=r("line");o&&typeof o=="object"&&(o=o.name||o.label||o.number||o.symbol||"");let a=r("destination");if(n&&o==null&&a==null)return null;let c=ic(this._readField(t,"delay",A)??(n?e.delay:void 0)),l=PA(this._readField(t,"time",A),s);if(l==null){let m=this._readField(t,"minutes",A);m!=null&&m!==""&&!Number.isNaN(+m)&&(l=s+ +m*6e4)}if(l==null&&t.__state!=null&&(l=PA(t.__state,s)),l==null)return null;(this._config.add_delay||A.add_delay)&&c&&(l+=c*6e4);let h=PA(this._readField(t,"planned",A),s),d=this._readField(t,"cancelled",A),u=this._readField(t,"alerts",A),p=String(o??"").trim()||"\u2022",f=String(a??"").trim();return{line:p,destination:f,dir:`${p}|${String(e.direction||f)}`,ts:l,planned:h,delay:c??0,realtime:c!=null||t.estimated!=null,platform:this._readField(t,"platform",A),cancelled:d===!0||d==="true"||d===1,alerts:Array.isArray(u)?u.length>0:!!u,alertText:Array.isArray(u)?u.map(m=>typeof m=="string"?m:m?.header||m?.text||m?.title||"").filter(Boolean).join(" \xB7 "):typeof u=="string"?u:"",color:r("color"),transport:String(r("transport")||"").toUpperCase()}}_lineColor(t){let e=this._config.line_colors||{};if(e[t.line])return e[t.line];if(t.color)return String(t.color).match(/^[0-9a-f]{6}$/i)?`#${t.color}`:t.color;if(this._config.departure_style==="berlin"||this._config.line_colors_preset==="berlin"){if(xr[t.line])return xr[t.line];if(Sr[t.transport])return Sr[t.transport]}return vr[sc(t.line)%vr.length]}_badge(t){let e=this._lineColor(t);return`<div class="badge" style="background:${y(e)};color:${rc(e)}">${y(t.line)}</div>`}_whenHtml(t,e){let A=Math.max(0,Math.floor((t.ts-e)/6e4));return A<1?`<div class="m soon">${this._t("now")}</div>`:A<60?`<div class="m${A<=2?" soon":""}">${A}<small>${this._t("min")}</small></div>`:`<div class="m">${y(this._fmtTime(t.ts))}</div>`}_rowsHtml(t,e,A){let s=this._config,n="",r=null;for(let o of t){s.group_departures&&o.groupIdx!==r&&(r=o.groupIdx,n+=`<div class="group-h">${y(o.group)}</div>`);let a=[];if(o.cancelled)a.push(`<span class="x">${this._t("cancelled")}</span>`);else{let c=o.realtime&&s.show_realtime!==!1?`<span class="rt" title="${this._t("realtime")}"></span>`:"";A&&o.planned&&Math.abs(o.planned-o.ts)>=6e4?a.push(`${c}<s>${y(this._fmtTime(o.planned))}</s> ${y(this._fmtTime(o.ts))}`):a.push(`${c}${y(this._fmtTime(o.ts))}`),o.delay>=1?a.push(`<span class="late">+${Math.round(o.delay)}</span>`):s.show_on_time&&o.realtime&&a.push(`<span class="ontime">${this._t("on_time")}</span>`)}o.platform!=null&&o.platform!==""&&a.push(`${this._t("platform")} ${y(o.platform)}`),o.alerts&&a.push(`<span class="al">\u26A0${A?` ${y(o.alertText||this._t("disruption"))}`:""}</span>`),n+=`<div class="row${o.cancelled?" cancelled":""}">
+        ${this._badge(o)}
+        <div style="min-width:0"><div class="dest">${y(o.destination||"\u2014")}</div><div class="sub">${a.join(" \xB7 ")}</div></div>
+        <div class="when">${this._whenHtml(o,e)}</div>
+      </div>`}return`<div class="rows">${n}</div>`}_advice(t,e){let A=Math.max(0,+this._config.walk_minutes||0),s=Math.max(0,(t.ts-e)/6e4);if(A<=0)return`<span class="w">${s<1?this._t("now"):`${Math.floor(s)} ${this._t("min")}`}</span>`;let n=Math.floor(s-A);return s<A?`<span class="w late">${this._t("too_late")}</span>`:n<=1?`<span class="w go">${this._t("leave_now")}</span>`:`<span class="w wait">${this._t("leave_in",n)}</span>`}_trackHtml(t,e){let A=Math.max(5,+this._config.approach_window||15),s=Math.max(0,+this._config.walk_minutes||0),n=Math.max(0,(t.ts-e)/6e4),r=Math.max(0,Math.min(1,1-n/A))*100,o=[];for(let c=5;c<A;c+=5)o.push(`<i class="tick" style="left:${(1-c/A)*100}%"></i>`);let a=s>0&&s<A?`<i class="walk" style="left:${(1-s/A)*100}%"></i>`:"";return`<div class="track"><i class="rail"></i>${o.join("")}${a}<i class="tr${n<1?" arr":""}" style="left:${r}%;background:${y(this._lineColor(t))}"></i><span class="st">U</span></div>`}_depTitle(){let t=this._config;return t.station_name||t.title_departures||this._t("departures")}_ovDep(){let t=this._$("ov-dep");this._$("ovd-title").textContent=this._depTitle();let e=this._$("ov-adv");if(!this._depConf.length)return e.hidden=!0,void(t.innerHTML=`<div class="msg">${this._t("not_configured")}</div>`);let{list:A,errors:s,now:n}=this._collectDepartures(),r=s.map(a=>`<div class="msg error">${this._t("not_found")}: ${y(a)}</div>`).join("");if(!A.length)return e.hidden=!0,void(t.innerHTML=r+`<div class="msg">${this._t("no_departures")}</div>`);t.innerHTML=r+this._rowsHtml(A.slice(0,Math.max(1,+this._config.max_departures||7)),n,!1);let o=A.find(a=>!a.cancelled&&(a.ts-n)/6e4>=(+this._config.walk_minutes||0));this._config.show_approach&&o&&+this._config.walk_minutes>0?(e.hidden=!1,e.innerHTML=`${this._badge(o)}<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">\u2192 ${y(o.destination)}</span>${this._advice(o,n)}`):e.hidden=!0}_bindTransit(){this._$("tr-filter").addEventListener("click",t=>{let e=t.target.closest("[data-dir]");if(!e)return;let A=e.dataset.dir;A==="*"?this._trHidden.clear():this._trHidden.has(A)?this._trHidden.delete(A):this._trHidden.add(A),Vt("idc_tr_hidden",[...this._trHidden]),this._trRender()})}_trRender(){let t=this._config,e=this._$("tr-board"),A=this._$("tr-dirs"),s=this._$("tr-filter");if(this._$("trd-title").textContent=this._depTitle(),!this._depConf.length){e.innerHTML=`<div class="msg">${this._t("not_configured")}</div>`,A.innerHTML=s.innerHTML="";return}let{list:n,errors:r,now:o,updated:a}=this._collectDepartures(),c=r.map(u=>`<div class="msg error">${this._t("not_found")}: ${y(u)}</div>`).join(""),l=new Map;for(let u of n)l.has(u.dir)||l.set(u.dir,{key:u.dir,first:u,deps:[]}),l.get(u.dir).deps.push(u);let h=[...l.values()];s.innerHTML=h.length>1?`<button class="chip${this._trHidden.size?"":" sel"}" data-dir="*">${this._t("all")}</button>`+h.map(u=>`<button class="chip${this._trHidden.has(u.key)?" off":" sel"}" data-dir="${y(u.key)}">${this._badge(u.first)}${y(u.key.split("|")[1]||u.first.destination)}</button>`).join(""):"",s.hidden=h.length<2;let d=n.filter(u=>!this._trHidden.has(u.dir));e.innerHTML=c+(d.length?this._rowsHtml(d.slice(0,Math.max(1,+t.max_departures_detail||14)),o,!0):`<div class="msg">${this._t("no_departures")}</div>`),this._$("tr-foot").textContent=a?this._t("updated",this._fmt(a,{hour:"2-digit",minute:"2-digit",second:"2-digit"})):"",A.innerHTML=h.filter(u=>!this._trHidden.has(u.key)).map(u=>{let f=u.deps.filter(x=>!x.cancelled)[0]||u.first,m=u.deps.slice(f===u.deps[0]?1:0,6).filter(x=>x!==f),g=x=>Math.max(0,Math.floor((x.ts-o)/6e4)),_=g(f)<1?this._t("now"):g(f)<60?`${g(f)}<small>${this._t("min")}</small>`:y(this._fmtTime(f.ts));return`<div class="dir">
+          <div class="dir-h">${this._badge(f)}<span class="d">\u2192 ${y(u.key.split("|")[1]||f.destination)}</span>${f.platform!=null&&f.platform!==""?`<span class="pl">${this._t("platform")} ${y(f.platform)}</span>`:""}</div>
+          <div class="dir-next"><span class="f">${_}</span>${m.map(x=>`<span class="o${x.cancelled?" x":x.delay>=1?" late":""}">${g(x)<60?`${g(x)}<small>${this._t("min")}</small>`:y(this._fmtTime(x.ts))}</span>`).join("")}</div>
+          ${t.show_approach?this._trackHtml(f,o):""}
+          <div class="adv">${this._advice(f,o)}${f.delay>=1?` \xB7 <span style="color:var(--idc-warn)">+${Math.round(f.delay)} ${this._t("min")}</span>`:""}</div>
+        </div>`}).join("")}_bindClock(){this._$("al-add").addEventListener("click",()=>this._openAlarm()),this._$("cl-alarms").addEventListener("click",e=>{let A=e.target.closest("[data-toggle]");if(A){let n=this._data.alarms.find(r=>r.id===A.dataset.toggle);n&&(n.enabled=!n.enabled,this._saveUserData(),this._clRender());return}let s=e.target.closest("[data-alarm]");s&&this._openAlarm(s.dataset.alarm)}),this._$("al-days").addEventListener("click",e=>{let A=e.target.closest("[data-day]");A&&A.classList.toggle("sel")}),this._$("al-overlay").addEventListener("click",e=>e.target.id==="al-overlay"&&this._closeAlarm()),this._$("al-cancel").addEventListener("click",()=>this._closeAlarm()),this._$("al-sheet").addEventListener("submit",e=>{e.preventDefault();let A=this._$("al-time").value;if(!/^\d{2}:\d{2}/.test(A))return;let s=[...this._$("al-days").querySelectorAll(".sel")].map(a=>+a.dataset.day),n=this._$("al-label").value.trim(),r=this._data.alarms||(this._data.alarms=[]),o=r.find(a=>a.id===this._editAlarm);o?Object.assign(o,{time:A.slice(0,5),days:s,label:n,enabled:!0}):r.push({id:Dr(),time:A.slice(0,5),days:s,label:n,enabled:!0}),r.sort((a,c)=>a.time.localeCompare(c.time)),this._saveUserData(),this._closeAlarm(),this._clRender()}),this._$("al-del").addEventListener("click",()=>{this._data.alarms=(this._data.alarms||[]).filter(e=>e.id!==this._editAlarm),this._saveUserData(),this._closeAlarm(),this._clRender()});let t=Array.isArray(this._config.timer_presets)?this._config.timer_presets:Xt.timer_presets;this._$("tm-presets").innerHTML=t.map(e=>`<button class="chip" data-min="${+e}">${+e} ${this._t("min")}</button>`).join(""),this._$("tm-presets").addEventListener("click",e=>{let A=e.target.closest("[data-min]");A&&this._startTimer(+A.dataset.min)}),this._$("tm-form").addEventListener("submit",e=>{e.preventDefault();let A=parseFloat(String(this._$("tm-min").value).replace(",","."));A>0&&this._startTimer(A),this._$("tm-min").value="",this._$("tm-min").blur()}),this._$("cl-timers").addEventListener("click",e=>{let A=e.target.closest("[data-tact]");if(!A)return;let s=this._timers.find(n=>n.id===A.dataset.tid);s&&(A.dataset.tact==="plus"?(s.end+=6e4,s.duration+=6e4):this._timers=this._timers.filter(n=>n!==s),Vt("idc_timers",this._timers),this._clRender())}),this._$("sw-b1").addEventListener("click",()=>{this._sw.start?this._sw.laps.unshift(this._swElapsed()):this._sw={start:null,acc:0,laps:[]},this._saveSw()}),this._$("sw-b2").addEventListener("click",()=>{this._sw.start?(this._sw.acc=this._swElapsed(),this._sw.start=null):this._sw.start=Date.now(),this._saveSw()}),this._$("ring-stop").addEventListener("click",()=>this._stopRing()),this._$("ring-snooze").addEventListener("click",()=>{let e=this._ringing;this._stopRing(),e?.type==="alarm"&&this._snoozes.push({until:Date.now()+(+this._config.snooze_minutes||9)*6e4,label:e.label,time:e.time})})}_openAlarm(t){let e=(this._data.alarms||[]).find(s=>s.id===t);this._editAlarm=e?.id||null;let A=new Date(Date.now()+36e5);this._$("al-time").value=e?.time||`${dt(A.getHours())}:00`,this._$("al-label").value=e?.label||"";for(let s of this._$("al-days").children)s.classList.toggle("sel",!!e?.days?.includes(+s.dataset.day));this._$("al-del").hidden=!e,this._$("al-overlay").hidden=!1}_closeAlarm(){this._$("al-overlay").hidden=!0,this._editAlarm=null,this.shadowRoot.activeElement?.blur?.()}_repeatText(t){let e=[...t||[]].sort();return e.length?e.length===7?this._t("daily_rep"):e.join()==="1,2,3,4,5"?this._t("weekdays"):e.join()==="6,7"?this._t("weekend"):e.map(A=>this._t("days_short")[A-1]).join(", "):this._t("once")}_alarmNext(t,e=Date.now()){let[A,s]=t.time.split(":").map(Number);for(let n=0;n<8;n++){let r=new Date(e);if(r.setDate(r.getDate()+n),r.setHours(A,s,0,0),r.getTime()<=e)continue;let o=r.getDay()||7;if(!t.days?.length||t.days.includes(o))return r.getTime()}return null}_nextAlarm(){let t=null;for(let e of this._data.alarms||[]){if(!e.enabled)continue;let A=this._alarmNext(e);A&&(!t||A<t.ts)&&(t={ts:A,alarm:e})}for(let e of this._snoozes)(!t||e.until<t.ts)&&(t={ts:e.until,alarm:{label:e.label}});return t}_checkAlarms(t){let e=new Date(t),A=`${dt(e.getHours())}:${dt(e.getMinutes())}`,s=e.getDay()||7,n=`${e.toDateString()} ${A}`;for(let o of this._data.alarms||[])!o.enabled||o.time!==A||this._fired[o.id]===n||o.days?.length&&!o.days.includes(s)||(this._fired[o.id]=n,o.days?.length||(o.enabled=!1,this._saveUserData()),this._ring({type:"alarm",label:o.label||this._t("alarm_ringing"),time:o.time}));let r=this._snoozes.filter(o=>o.until<=t+500);r.length&&(this._snoozes=this._snoozes.filter(o=>!r.includes(o)),this._ring({type:"alarm",label:r[0].label||this._t("alarm_ringing"),time:r[0].time}))}_startTimer(t){let e=Math.round(t*6e4);this._timers.push({id:Dr(),end:Date.now()+e,duration:e,label:`${t.toLocaleString(this._lang)} ${this._t("min")}`}),Vt("idc_timers",this._timers),this._clRender()}_checkTimers(t){let e=this._timers.filter(s=>s.end<=t);if(!e.length)return;this._timers=this._timers.filter(s=>s.end>t),Vt("idc_timers",this._timers);let A=e.filter(s=>t-s.end<5*6e4);A.length&&this._ring({type:"timer",label:A[0].label,time:null}),this._view==="clock"&&this._clRender()}_swElapsed(){return this._sw.acc+(this._sw.start?Date.now()-this._sw.start:0)}_saveSw(){Vt("idc_stopwatch",this._sw),this._clRender(),this._syncStopwatchTimer()}_syncStopwatchTimer(){let t=this._view==="clock"&&!!this._sw.start;t&&!this._swTimer&&(this._swTimer=setInterval(()=>this._swTick(),50)),!t&&this._swTimer&&(clearInterval(this._swTimer),this._swTimer=null)}_swTick(){let t=this._$("sw-time");if(!t)return;let e=St(this._swElapsed(),!0),A=e.lastIndexOf(",");t.innerHTML=`${e.slice(0,A)}<small>${e.slice(A)}</small>`}_clRender(){if(!this._built||this._view!=="clock")return;let t=this._data.alarms||[];this._$("cl-alarms").innerHTML=t.length?t.map(s=>`<div class="alarm${s.enabled?"":" off"}" data-alarm="${y(s.id)}">
+              <span class="t">${y(s.time)}</span>
+              <div class="i"><div>${y(s.label||this._t("alarm_ringing"))}</div><div>${y(this._repeatText(s.days))}</div></div>
+              <button class="sw${s.enabled?" on":""}" data-toggle="${y(s.id)}" aria-label="on/off"></button>
+            </div>`).join("")+`<div class="msg" style="font-size:12.5px">${y(this._t("alarm_note"))}</div>`:`<div class="msg">${this._t("no_alarms")}</div><div class="msg" style="font-size:12.5px">${y(this._t("alarm_note"))}</div>`;let e=this._sw;this._$("sw-b1").textContent=e.start?this._t("lap"):this._t("reset"),this._$("sw-b1").disabled=!e.start&&!e.acc,this._$("sw-b2").textContent=e.start?this._t("stop"):e.acc?this._t("resume"):this._t("start"),this._$("sw-b2").className=`btn ${e.start?"danger":"good"}`;let A=e.laps||[];this._$("sw-laps").innerHTML=A.map((s,n)=>{let r=A[n+1]||0;return`<div class="lap"><span>${this._t("lap")} ${A.length-n}</span><b>${St(s-r,!0)}</b><span>${St(s,!0)}</span></div>`}).join(""),this._swTick(),this._clTick(!0)}_clTick(){let t=Date.now();this._$("cl-time").innerHTML=`${y(this._fmtTime(t))}<span class="sec">${dt(new Date(t).getSeconds())}</span>`;let e=this._nextAlarm(),A=`<span><b>${y(this._fmt(t,{weekday:"long",day:"numeric",month:"long"}))}</b></span>`;if(e){let r=Math.max(0,e.ts-t);A+=`<span>${this._t("next_alarm")}: <b>${y(this._alarmWhen(e.ts))}</b> \xB7 ${y(this._t("in_time",Math.floor(r/36e5),Math.floor(r%36e5/6e4)))}</span>`}this._$("cl-meta").innerHTML=A;let s=this._$("cl-timers"),n=this._timers.map(r=>`${r.id}:${r.duration}`).join();if(s.dataset.sig===n&&this._timers.length){for(let r of this._timers){let o=s.querySelector(`[data-timer="${r.id}"]`);if(!o)continue;let a=Math.max(0,r.end-t);o.querySelector(".t").textContent=St(a),o.querySelector(".prog i").style.width=`${a/r.duration*100}%`}return}s.dataset.sig=n,s.innerHTML=this._timers.length?this._timers.map(r=>{let o=Math.max(0,r.end-t);return`<div class="timer" data-timer="${r.id}"><div class="row1"><span class="t">${St(o)}</span>
+              <button class="btn" data-tact="plus" data-tid="${r.id}">+1 ${this._t("min")}</button>
+              <button class="btn round danger" data-tact="del" data-tid="${r.id}"><ha-icon icon="mdi:close"></ha-icon></button></div>
+              <div class="sub" style="margin-top:4px">${y(r.label||"")}</div>
+              <div class="prog"><i style="width:${o/r.duration*100}%"></i></div></div>`}).join(""):`<div class="msg">${this._t("no_timers")}</div>`}_unlockAudio(){try{if(!this._audio){let t=window.AudioContext||window.webkitAudioContext;t&&(this._audio=new t)}this._audio?.state==="suspended"&&this._audio.resume()}catch{}}_beep(){let t=this._audio;if(!t)return;t.state==="suspended"&&t.resume();let e=t.currentTime+.02;for(let A=0;A<3;A++){let s=t.createOscillator(),n=t.createGain(),r=e+A*.26;s.type="sine",s.frequency.value=A===2?1046.5:880,n.gain.setValueAtTime(1e-4,r),n.gain.exponentialRampToValueAtTime(.4,r+.02),n.gain.exponentialRampToValueAtTime(1e-4,r+.22),s.connect(n).connect(t.destination),s.start(r),s.stop(r+.25)}}_ring(t){this._stopRing(!0),this._ringing=t,this._$("ring-icon").setAttribute("icon",t.type==="timer"?"mdi:timer-sand-complete":"mdi:alarm"),this._$("ring-time").textContent=t.type==="timer"?this._t("timer_done"):this._fmtTime(Date.now()),this._$("ring-time").style.fontSize=t.type==="timer"?"54px":"",this._$("ring-label").textContent=t.label||"",this._$("ring-snooze").hidden=t.type!=="alarm",this._$("ring-snooze").textContent=this._t("snooze",+this._config.snooze_minutes||9),this._$("ring").hidden=!1,this._beep(),this._ringTimer=setInterval(()=>this._beep(),1400),this._ringStop=setTimeout(()=>this._stopRing(),(+this._config.alarm_ring_minutes||5)*6e4),this._config.alarm_script&&this._hass.callService("script","turn_on",{variables:{type:t.type,label:t.label||"",time:t.time||""}},{entity_id:this._config.alarm_script}).catch(e=>console.warn(`[${nt}] alarm_script failed`,e)),this._tbClock()}_stopRing(t){clearInterval(this._ringTimer),clearTimeout(this._ringStop),this._ringTimer=null,this._ringing=null;let e=this._$("ring");e&&(e.hidden=!0),t||(this._lastInteraction=Date.now(),this._view==="clock"&&this._clRender())}_musicRooms(){return(Array.isArray(this._config.music_rooms)?this._config.music_rooms:[]).map(t=>typeof t=="string"?{entity:t}:t).filter(t=>t&&t.entity)}_mediaInfo(t){let e=this._hass.states[t.entity],A=t.name||e?.attributes.friendly_name||t.entity;if(!e)return{room:t,name:A,missing:!0,status:"missing",features:0,a:{}};let s=e.attributes,n=e.state,r=n==="playing"?"playing":n==="paused"?"paused":n==="buffering"?"playing":n==="unavailable"||n==="unknown"?"unavailable":"off",o=s.entity_picture_local||s.entity_picture||"";return o&&!/^(https?:|data:)/i.test(o)&&this._hass.hassUrl&&(o=this._hass.hassUrl(o)),{room:t,name:A,s:e,a:s,status:r,features:+s.supported_features||0,pic:o}}_statusText(t){return t.missing?this._t("not_found"):t.status==="paused"?this._t("mu_paused"):t.status==="unavailable"?this._t("unavailable"):t.status==="off"?t.s.state==="idle"||t.s.state==="on"?this._t("mu_idle"):this._t("mu_off"):""}_coverHtml(t,e){return`<div class="${e}">${t.pic&&t.status!=="off"&&t.status!=="unavailable"?`<img alt="" src="${y(t.pic)}" onerror="this.remove()">`:""}<ha-icon icon="mdi:music-note"></ha-icon></div>`}_isMA(t){if(t.music_assistant!=null)return!!t.music_assistant;let e=this._hass.entities?.[t.entity];if(e?.platform)return e.platform==="music_assistant";let A=this._hass.states[t.entity]?.attributes||{};return A.mass_player_type!=null||A.mass_player_id!=null}_bindMusic(){this._$("mu-rooms").addEventListener("click",s=>{let n=s.target.closest("[data-mroom]");n&&(this._musicIdx=+n.dataset.mroom,this._musicSig=null,this._muRender())}),this._$("mu-main").addEventListener("click",s=>{let n=s.target.closest("[data-mact]");if(n)return this._musicAction(n.dataset.mact);let r=s.target.closest("#mu-prog");if(r){let a=this._muCurrent(),c=+a?.a.media_duration;if(!a||!(a.features&X.SEEK)||!c)return;let l=r.getBoundingClientRect(),h=Math.max(0,Math.min(1,(s.clientX-l.left)/l.width))*c;this._mpCall("media_seek",{seek_position:Math.round(h)});return}let o=s.target.closest("[data-pl]");if(o)return this._playPlaylist(o.dataset.pl,o.dataset.plname);s.target.closest("#mu-pl-retry")&&(this._plCache={},this._muPlaylists(!0))});let e=this._$("mu-vol"),A=()=>this._mpCall("volume_set",{volume_level:Math.round(+e.value)/100});e.addEventListener("input",()=>{this._volDrag=Date.now(),this._$("mu-vol-v").textContent=`${Math.round(+e.value)}`,clearTimeout(this._volT),this._volT=setTimeout(A,250)}),e.addEventListener("change",()=>{clearTimeout(this._volT),A(),this._volDrag=Date.now()}),this._$("mu-pl-q").addEventListener("input",()=>this._muPlaylists())}_muCurrent(){let t=this._musicRooms();if(!t.length)return null;if(this._musicIdx==null||this._musicIdx>=t.length){let A=t.map(s=>this._mediaInfo(s)).findIndex(s=>s.status==="playing");this._musicIdx=A>=0?A:0}return this._mediaInfo(t[this._musicIdx])}_mpCall(t,e={}){let A=this._muCurrent();!A||A.missing||this._hass.callService("media_player",t,e,{entity_id:A.room.entity}).catch(s=>this._notify(s))}_musicAction(t){let e=this._muCurrent();if(!e||e.missing)return;let A=e.a;switch(t){case"play":e.status==="playing"?this._mpCall(e.features&X.PAUSE?"media_pause":"media_stop"):this._mpCall(e.features&X.PLAY?"media_play":"media_play_pause");break;case"prev":this._mpCall("media_previous_track");break;case"next":this._mpCall("media_next_track");break;case"shuffle":this._mpCall("shuffle_set",{shuffle:!A.shuffle});break;case"repeat":this._mpCall("repeat_set",{repeat:A.repeat==="off"||!A.repeat?"all":A.repeat==="all"?"one":"off"});break;case"mute":this._mpCall("volume_mute",{is_volume_muted:!A.is_volume_muted});break;case"vdown":this._mpCall("volume_down");break;case"vup":this._mpCall("volume_up");break;case"power":this._mpCall(e.status==="off"&&e.features&X.TURN_ON?"turn_on":"turn_off");break}}_muRender(){if(!this._built)return;let t=this._musicRooms(),e=this._$("mu-rooms"),A=this._$("mu-main");if(!t.length){e.innerHTML="",this._$("mu-empty").hidden=!1,A.hidden=!0,this._muSendspinStatus();return}this._$("mu-empty").hidden=!0,A.hidden=!1;let s=this._muCurrent();e.innerHTML=t.map((n,r)=>{let o=this._mediaInfo(n),a=o.status==="playing"||o.status==="paused",c=this._statusText(o);return`<button class="mroom${r===this._musicIdx?" sel":""}${o.status==="playing"?"":" dim"}" data-mroom="${r}">
+          ${this._coverHtml(o,"mr-cover")}
+          <div class="mr-txt">
+            <div class="mr-name">${o.status==="playing"?'<span class="eq"><i></i><i></i><i></i></span>':""}${y(o.name)}</div>
+            ${a&&o.a.media_title?`<div class="mr-t">${y(o.a.media_title)}</div><div class="mr-a">${y(o.a.media_artist||o.a.media_album_name||"")}</div>`:`<div class="mr-a">${y(c||"")}</div>`}
+            <div class="mr-tags">${o.status==="paused"?`<span class="mr-st">${y(c)}</span>`:""}${o.a.app_name?`<span class="mr-app">${y(o.a.app_name)}</span>`:""}</div>
+          </div>
+        </button>`}).join(""),this._muMain(s),this._muSendspinStatus()}_muMain(t){let e=d=>(t.features&d)!==0,A=t.a,s=`${this._musicIdx}|${t.features}|${t.missing}|${this._isMA(t.room)}`;if(s!==this._musicSig){this._musicSig=s;let d=(m,g,_,x="")=>_?`<button class="mbtn ${x}" data-mact="${m}" id="mb-${m}"><ha-icon icon="${g}"></ha-icon></button>`:"";this._$("mu-ctrls").innerHTML=d("shuffle","mdi:shuffle-variant",e(X.SHUFFLE_SET),"small")+d("prev","mdi:skip-previous",e(X.PREVIOUS_TRACK))+d("play","mdi:play",e(X.PLAY)||e(X.PAUSE),"big")+d("next","mdi:skip-next",e(X.NEXT_TRACK))+d("repeat","mdi:repeat",e(X.REPEAT_SET),"small");let u=e(X.VOLUME_SET),p=!u&&e(X.VOLUME_STEP);this._$("mu-volrow").hidden=!u&&!p&&!e(X.VOLUME_MUTE),this._$("mu-vol").hidden=!u,this._$("mu-vol-v").hidden=!u,this._$("mu-vsteps").innerHTML=p?'<button class="mbtn small" data-mact="vdown"><ha-icon icon="mdi:volume-minus"></ha-icon></button><button class="mbtn small" data-mact="vup"><ha-icon icon="mdi:volume-plus"></ha-icon></button>':"",this._$("mu-mute").hidden=!e(X.VOLUME_MUTE),this._$("mu-power").hidden=!(e(X.TURN_ON)||e(X.TURN_OFF)),this._$("mu-prog").classList.toggle("seek",e(X.SEEK));let f=!t.missing&&this._isMA(t.room);this._$("mu-main").classList.toggle("with-pl",f),this._$("mu-pl").hidden=!f,f&&this._muPlaylists()}this._$("mu-cover").innerHTML=this._coverHtml(t,"mu-cover-in"),this._$("mu-room").innerHTML=`${y(t.name)}${t.status==="paused"?`<span class="mr-st">${y(this._t("mu_paused"))}</span>`:""}${A.app_name?`<span class="mr-app">${y(A.app_name)}</span>`:""}`;let n=t.status==="playing"||t.status==="paused";this._$("mu-title").textContent=n?A.media_title||A.media_channel||"\u2014":this._statusText(t)||"\u2014",this._$("mu-artist").textContent=n&&(A.media_artist||A.media_album_artist)||"",this._$("mu-album").textContent=n&&A.media_album_name||"";let r=this._$("mb-play");r&&r.querySelector("ha-icon").setAttribute("icon",t.status==="playing"?"mdi:pause":"mdi:play");let o=this._$("mb-shuffle");o&&o.classList.toggle("on",!!A.shuffle);let a=this._$("mb-repeat");a&&(a.classList.toggle("on",A.repeat==="all"||A.repeat==="one"),a.querySelector("ha-icon").setAttribute("icon",A.repeat==="one"?"mdi:repeat-once":"mdi:repeat"));for(let d of this._$("mu-main").querySelectorAll(".mbtn"))d.disabled=t.missing||t.status==="unavailable";this._$("mu-mute").querySelector("ha-icon").setAttribute("icon",A.is_volume_muted?"mdi:volume-off":"mdi:volume-high"),this._$("mu-power").classList.toggle("on",t.status!=="off"&&t.status!=="unavailable");let h=this._$("mu-vol");A.volume_level!=null&&(!this._volDrag||Date.now()-this._volDrag>2500)&&(h.value=Math.round(+A.volume_level*100),this._$("mu-vol-v").textContent=`${Math.round(+A.volume_level*100)}`),this._muProgress(t)}_muProgress(t=this._muCurrent()){if(!t||this._view!=="music")return;let e=t.a,A=+e.media_duration||0,s=+e.media_position||0;t.status==="playing"&&e.media_position_updated_at&&(s+=(Date.now()-Date.parse(e.media_position_updated_at))/1e3),s=Math.max(0,A?Math.min(s,A):s);let n=A>0&&(t.status==="playing"||t.status==="paused");this._$("mu-progwrap").style.visibility=n?"":"hidden",n&&(this._$("mu-prog-i").style.width=`${s/A*100}%`,this._$("mu-pos").textContent=St(s*1e3),this._$("mu-dur").textContent=`\u2212${St((A-s)*1e3)}`)}async _maEntryId(t){if(t.config_entry_id)return t.config_entry_id;if(this._config.music_assistant_entry)return this._config.music_assistant_entry;if(this._maEntries=this._maEntries||{},this._maEntries[t.entity])return this._maEntries[t.entity];let e=null;try{e=(await this._hass.callWS({type:"config/entity_registry/get",entity_id:t.entity}))?.config_entry_id||null}catch{let s=this._hass.devices?.[this._hass.entities?.[t.entity]?.device_id];e=s?.primary_config_entry||s?.config_entries?.[0]||null}return e&&(this._maEntries[t.entity]=e),e}async _muPlaylists(t){let e=this._muCurrent(),A=this._$("mu-pl-list");if(!e||e.missing||!this._isMA(e.room))return;this._plCache=this._plCache||{};let s=await this._maEntryId(e.room);if(!s){A.innerHTML=`<div class="msg">${this._t("mu_pl_error")} <button class="chip" id="mu-pl-retry">\u21BB</button></div>`;return}let n=this._plCache[s],r=30*6e4;if(t||!n||!n.loading&&Date.now()-n.ts>r&&!n.error){n=this._plCache[s]={loading:!0,items:n?.items||[],ts:Date.now()},n.items.length||(A.innerHTML=`<div class="msg">${this._t("mu_pl_loading")}</div>`);try{let l={config_entry_id:s,media_type:"playlist",limit:+this._config.playlist_limit||200,order_by:"name"};this._config.playlist_favorites_only&&(l.favorite=!0);let h=await this._hass.callWS({type:"call_service",domain:"music_assistant",service:"get_library",service_data:l,return_response:!0}),d=h?.response?.items||h?.items||[];n.items=d.filter(u=>u&&u.uri),n.error=!1}catch(l){console.warn(`[${nt}] get_library failed`,l),n.error=!0}n.loading=!1,n.ts=Date.now()}if(n.loading)return;let o=this._muCurrent();if(!o||o.room!==e.room)return;if(n.error&&!n.items.length){A.innerHTML=`<div class="msg">${this._t("mu_pl_error")} <button class="chip" id="mu-pl-retry">\u21BB</button></div>`;return}let a=this._$("mu-pl-q").value.trim().toLowerCase();this._$("mu-pl-q").hidden=n.items.length<10;let c=a?n.items.filter(l=>String(l.name||"").toLowerCase().includes(a)):n.items;A.innerHTML=c.length?c.map(l=>{let h=typeof l.image=="string"?l.image:l.image?.path||"";h&&!/^(https?:|data:)/i.test(h)&&this._hass.hassUrl&&(h=this._hass.hassUrl(h));let d=l.owner||(Array.isArray(l.artists)?l.artists.map(u=>u.name).join(", "):"");return`<button class="pl" data-pl="${y(l.uri)}" data-plname="${y(l.name||"")}">
+              <span class="pl-img">${h?`<img alt="" loading="lazy" src="${y(h)}" onerror="this.remove()">`:""}<ha-icon icon="mdi:playlist-music"></ha-icon></span>
+              <span class="pl-t"><span>${y(l.name||l.uri)}</span>${d?`<small>${y(d)}</small>`:""}</span>
+              <ha-icon class="pl-play" icon="mdi:play-circle-outline"></ha-icon>
+            </button>`}).join(""):`<div class="msg">${this._t("mu_pl_empty")}</div>`}_playPlaylist(t,e){let A=this._muCurrent();!A||A.missing||this._hass.callService("music_assistant","play_media",{media_id:t,media_type:"playlist",enqueue:"replace"},{entity_id:A.room.entity}).then(()=>this._toast(this._t("mu_pl_playing",e||t,A.name))).catch(s=>this._notify(s))}_sendspinCfg(){let t=this._config.sendspin_server;if(!t)return null;let e;try{let A=String(t).trim();/^wss?:\/\//i.test(A)||(A=`ws://${A}`);let s=new URL(A);!s.port&&!/^wss?:\/\/[^/]+:\d+/i.test(A)&&(s.port="8927"),(!s.pathname||s.pathname==="/")&&(s.pathname="/sendspin"),e=s.toString()}catch{return console.warn(`[${nt}] invalid sendspin_server`,t),null}return{url:e,name:String(this._config.player_name||"iPad"),codecs:this._config.sendspin_codecs}}_sendspinStart(){let t=this._sendspinCfg();if(!t){this._ssListener&&T.listeners.delete(this._ssListener),this._updateSendspinUi();return}dc(t),this._ssListener||(this._ssListener=()=>this._updateSendspinUi()),T.listeners.add(this._ssListener),this._updateSendspinUi()}_updateSendspinUi(){if(!this._built)return;let t=!!this._sendspinCfg(),e=this._$("tb-ss"),A=this._$("ss-overlay"),s=this._$("ss-pair");if(e.hidden=!t,A.hidden=!t||T.unlocked,!t){s.hidden=!0;return}let n=T.state;e.className=`tb-ss ${n}`;let r=T.info?.isPlaying;e.innerHTML=`<ha-icon icon="${r?"mdi:speaker-play":n==="connected"?"mdi:speaker":"mdi:speaker-off"}"></ha-icon>`,e.title=`${this._sendspinCfg().name}: ${this._t(`ss_${n}`)}`,s.hidden=!T.pairingCode,T.pairingCode&&(this._$("ss-pair-code").textContent=T.pairingCode),this._view==="music"&&this._muSendspinStatus()}_muSendspinStatus(){let t=this._$("mu-ss"),e=this._sendspinCfg();if(!t||(t.hidden=!e,!e))return;let A=T.state,s=T.info?.serverState?.metadata,n=T.info?.isPlaying&&s?.title?` \xB7 ${s.title}${s.artist?` \u2013 ${s.artist}`:""}`:"";t.innerHTML=`<span class="dot ${A}"></span><span>${y(this._t("ss_this_ipad",e.name))}: ${y(this._t(`ss_${A}`))}${y(n)}</span>`}_sendspinUnlock(){if(!T.player)return;let t=T.player.unlock();T.unlocked=!0,Promise.resolve(t).catch(e=>console.warn(`[${nt}] sendspin unlock failed`,e)),Pe()}},pc={weather_entity:"Wetter-Entit\xE4t",weather_location:"Ortsname (Wetter)",todo_entity:"Einkaufsliste (To-do-Entit\xE4t, z. B. Bring!)",todo_entities:"Weitere Bring!-Listen (umschaltbar)",departure_entities:"Abfahrts-Sensoren",departure_style:"Stil der Abfahrtstafel",station_name:"Name der Station",title_todo:"Titel Einkaufsliste",max_departures:"Abfahrten in der \xDCbersicht",max_departures_detail:"Abfahrten im Tab Verkehr",walk_minutes:"Fu\xDFweg zur Station (Min.)",forecast_hours:"Stunden in der \xDCbersicht",forecast_days:"Tage im Tab Wetter",show_completed:"\u201EZuletzt gekauft\u201C (Anzahl)",default_tab:"Start-Tab",return_to_overview:"Zur\xFCck zur \xDCbersicht nach (Sek., 0 = nie)",alarm_script:"Skript beim Wecker/Timer (optional)",sendspin_server:"Sendspin-Server (z. B. 192.168.178.10:8927)",player_name:"Name dieses iPads als Lautsprecher",snooze_minutes:"Schlummern (Min.)",show_seconds:"Sekunden anzeigen",show_approach:"Anfahrt-Anzeige",weather_gradient:"Wetter mit Farbverlauf",add_delay:"Versp\xE4tung zur Abfahrtszeit addieren",height:"Kartenh\xF6he (CSS)",floorplan:"Grundriss",image:"Bild-URL (z. B. /local/grundriss.png)",title:"Titel",invert:"Helles Bild invertieren"},js=class extends HTMLElement{setConfig(t){this._config=t,this._render()}set hass(t){this._hass=t,this._form?this._form.hass=t:this._render()}_schema(){let t=this._config?.departure_entities,e=!t||Array.isArray(t)&&t.every(s=>typeof s=="string"),A=[...Ks.map(s=>({value:s.id,label:ze.de[`tab_${s.id}`]})),{value:"clock",label:ze.de.tab_clock}];return[{name:"weather_entity",selector:{entity:{filter:{domain:"weather"}}}},{name:"todo_entity",selector:{entity:{filter:{domain:"todo"}}}},{name:"todo_entities",selector:{entity:{multiple:!0,filter:{domain:"todo"}}}},...e?[{name:"departure_entities",selector:{entity:{multiple:!0,filter:{domain:"sensor"}}}}]:[],{type:"grid",name:"",schema:[{name:"default_tab",selector:{select:{mode:"dropdown",options:A}}},{name:"return_to_overview",selector:{number:{min:0,max:3600,step:10,mode:"box"}}},{name:"departure_style",selector:{select:{mode:"dropdown",options:[{value:"calm",label:"Ruhig"},{value:"berlin",label:"Berlin (Zugzielanzeiger)"}]}}},{name:"station_name",selector:{text:{}}},{name:"walk_minutes",selector:{number:{min:0,max:30,mode:"box"}}},{name:"max_departures",selector:{number:{min:1,max:20,mode:"box"}}},{name:"max_departures_detail",selector:{number:{min:1,max:30,mode:"box"}}},{name:"weather_location",selector:{text:{}}},{name:"forecast_hours",selector:{number:{min:0,max:8,mode:"box"}}},{name:"forecast_days",selector:{number:{min:1,max:15,mode:"box"}}},{name:"title_todo",selector:{text:{}}},{name:"show_completed",selector:{number:{min:0,max:60,mode:"box"}}},{name:"snooze_minutes",selector:{number:{min:1,max:30,mode:"box"}}},{name:"height",selector:{text:{}}},{name:"show_approach",selector:{boolean:{}}},{name:"weather_gradient",selector:{boolean:{}}},{name:"show_seconds",selector:{boolean:{}}},{name:"add_delay",selector:{boolean:{}}}]},{name:"alarm_script",selector:{entity:{filter:{domain:"script"}}}},{type:"expandable",name:"",title:"Musik: dieses iPad als Lautsprecher (Sendspin)",flatten:!0,schema:[{name:"sendspin_server",selector:{text:{}}},{name:"player_name",selector:{text:{}}}]},{type:"expandable",name:"floorplan",title:"Grundriss",schema:[{name:"image",selector:{text:{}}},{name:"title",selector:{text:{}}},{name:"invert",selector:{boolean:{}}}]}]}_render(){if(!(!this._config||!this._hass)){if(!this._form){this._form=document.createElement("ha-form"),this._form.computeLabel=e=>pc[e.name]||e.name,this._form.addEventListener("value-changed",e=>{e.stopPropagation();let A={...e.detail.value};for(let[s,n]of Object.entries(A))(n===""||n===void 0||Array.isArray(n)&&!n.length&&s==="todo_entities"||s in Xt&&JSON.stringify(n)===JSON.stringify(Xt[s])&&!(s in(this._config||{})))&&delete A[s];this._config=A,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:A},bubbles:!0,composed:!0}))}),this.appendChild(this._form);let t=document.createElement("div");t.style.cssText="margin-top:12px;font-size:12px;opacity:.6",t.textContent=`iPad Dashboard Card v${Ys} \xB7 R\xE4ume, Musik-R\xE4ume, Tabs, Layout und Linienfarben im YAML-Editor`,this.appendChild(t)}this._form.hass=this._hass,this._form.data={...Xt,...this._config},this._form.schema=this._schema()}}};customElements.get(nt)||customElements.define(nt,Zs);customElements.get(Fs)||customElements.define(Fs,js);window.customCards=window.customCards||[];window.customCards.some(i=>i.type===nt)||window.customCards.push({type:nt,name:"iPad Dashboard Card",description:"Tabs f\xFCr \xDCbersicht, Wetter, Verkehr, Einkaufen (Bring!), Zuhause, Musik und Uhr \u2013 f\xFCr das iPad im Querformat.",preview:!1,documentationURL:"https://github.com/flxxxlf/homeassist-ipad-dashboard-card"});console.info(`%c IPAD-DASHBOARD-CARD %c v${Ys} `,"background:#7fa6c9;color:#0e1115;font-weight:700;border-radius:3px 0 0 3px","background:#151a20;color:#e4e7eb;border-radius:0 3px 3px 0");
+/*! Bundled license information:
 
-    const seen = new Set(t.open.map((i) => i.summary.toLowerCase()));
-    const done = t.done.filter((i) => !seen.has(i.summary.toLowerCase())).slice(0, Math.max(0, +this._config.show_completed || 0));
-    recent.innerHTML = done.length
-      ? `<div class="chips">${done
-          .map((i) => `<button class="chip" data-reopen="${esc(i.uid)}"><ha-icon icon="mdi:plus" style="--mdc-icon-size:15px"></ha-icon>${esc(i.summary)}</button>`)
-          .join("")}</div>`
-      : `<div class="msg">–</div>`;
-    const favs = Array.isArray(this._config.quick_items) ? this._config.quick_items : [];
-    this._$("sh-fav-wrap").hidden = !favs.length;
-    this._$("sh-fav").innerHTML = favs
-      .map((f) => {
-        const onList = seen.has(String(f).toLowerCase());
-        return `<button class="chip${onList ? " sel" : ""}" data-fav="${esc(f)}"${onList ? " disabled" : ""}>${esc(f)}</button>`;
-      })
-      .join("");
-    this._renderSuggestions();
-  }
+@noble/curves/utils.js:
+@noble/curves/abstract/modular.js:
+@noble/curves/abstract/curve.js:
+@noble/curves/abstract/edwards.js:
+@noble/curves/abstract/montgomery.js:
+@noble/curves/ed25519.js:
+  (*! noble-curves - MIT License (c) 2022 Paul Miller (paulmillr.com) *)
 
-  _renderSuggestions() {
-    const el = this._$("add-sugg");
-    const q = this._$("add-input").value.trim().toLowerCase().split(this._config.spec_separator || "\u0000")[0].trim();
-    if (!q || !this._items) return void (el.innerHTML = "");
-    const openNames = new Set(this._items.filter((i) => i.status === "needs_action").map((i) => i.summary.toLowerCase()));
-    const matches = this._items
-      .filter((i) => i.status === "completed" && !openNames.has(i.summary.toLowerCase()) && i.summary.toLowerCase().includes(q))
-      .sort((a, b) => a.summary.toLowerCase().indexOf(q) - b.summary.toLowerCase().indexOf(q))
-      .slice(0, 8);
-    el.innerHTML = matches
-      .map((i) => `<button class="chip" data-reopen="${esc(i.uid)}"><ha-icon icon="mdi:history" style="--mdc-icon-size:15px"></ha-icon>${esc(i.summary)}</button>`)
-      .join("");
-  }
-
-  _onTodoPress(el, hold, ev) {
-    if (el.dataset.reopen) {
-      if (hold) return this._openEdit(el.dataset.reopen);
-      el.disabled = true;
-      return this._reopen(el.dataset.reopen);
-    }
-    const uid = el.dataset.uid;
-    if (hold || ev?.target?.closest?.("[data-edit]")) return this._openEdit(uid);
-    if (this._pending.has(uid)) return;
-    const item = this._items?.find((i) => i.uid === uid);
-    this._pending.add(uid);
-    el.classList.add("pending");
-    this._callTodo("update_item", { item: uid, status: "completed" }, uid).then((ok) => {
-      if (ok && item) this._toast(this._t("completed_toast", item.summary), () => this._reopen(uid));
-    });
-  }
-
-  _reopen(uid) {
-    return this._callTodo("update_item", { item: uid, status: "needs_action" });
-  }
-
-  _callTodo(service, data, pendingUid) {
-    return this._hass
-      .callService("todo", service, data, { entity_id: this._list })
-      .then(() => true)
-      .catch((err) => {
-        if (pendingUid) this._pending.delete(pendingUid);
-        this._refresh("todo");
-        this._notify(err);
-        return false;
-      });
-  }
-
-  _addItem() {
-    const input = this._$("add-input");
-    const raw = input.value.trim();
-    if (!raw || !this._items) return;
-    let summary = raw;
-    let description;
-    const sep = this._config.spec_separator;
-    if (sep && this._todoSupportsDesc && raw.includes(sep)) {
-      const idx = raw.indexOf(sep);
-      summary = raw.slice(0, idx).trim();
-      description = raw.slice(idx + sep.length).trim() || undefined;
-    }
-    if (!summary) return;
-    input.value = "";
-    this._renderSuggestions();
-    const existing = this._items.find((i) => i.summary.toLowerCase() === summary.toLowerCase());
-    let call;
-    if (existing) {
-      if (existing.status === "needs_action" && !description) return;
-      const data = { item: existing.uid, status: "needs_action" };
-      if (description) data.description = description;
-      call = this._callTodo("update_item", data);
-    } else {
-      const data = { item: summary };
-      if (description) data.description = description;
-      call = this._callTodo("add_item", data);
-    }
-    call.then((ok) => {
-      if (!ok) input.value = raw;
-    });
-  }
-
-  _openEdit(uid) {
-    const item = this._items?.find((i) => i.uid === uid);
-    if (!item) return;
-    this._editItem = item;
-    this._$("ed-done").hidden = item.status !== "needs_action";
-    this._$("ed-name").value = item.summary;
-    this._$("ed-spec").value = item.description || "";
-    this._$("ed-spec-wrap").hidden = !this._todoSupportsDesc;
-    const sugg = Array.isArray(this._config.spec_suggestions) ? this._config.spec_suggestions : [];
-    this._$("ed-chips").innerHTML = sugg.map((s) => `<button type="button" class="chip" data-spec="${esc(s)}">${esc(s)}</button>`).join("");
-    this._$("ed-overlay").hidden = false;
-    setTimeout(() => (this._todoSupportsDesc ? this._$("ed-spec") : this._$("ed-name")).focus(), 50);
-  }
-
-  _closeEdit() {
-    this._$("ed-overlay").hidden = true;
-    this._editItem = null;
-    this.shadowRoot.activeElement?.blur?.();
-  }
-
-  _saveEdit(status) {
-    const item = this._editItem;
-    if (!item) return this._closeEdit();
-    const name = this._$("ed-name").value.trim();
-    const spec = this._$("ed-spec").value.trim();
-    const data = { item: item.uid };
-    if (name && name !== item.summary) data.rename = name;
-    if (this._todoSupportsDesc && spec !== (item.description || "")) data.description = spec;
-    if (status) data.status = status;
-    this._closeEdit();
-    if (Object.keys(data).length > 1) this._callTodo("update_item", data);
-  }
-
-  _toast(text, undo) {
-    const el = this._$("toast");
-    clearTimeout(this._toastTimer);
-    el.innerHTML = `<span>${esc(text)}</span>${undo ? `<button class="btn">${this._t("undo")}</button>` : ""}`;
-    el.hidden = false;
-    el.querySelector("button")?.addEventListener("click", () => {
-      el.hidden = true;
-      undo();
-    });
-    this._toastTimer = setTimeout(() => (el.hidden = true), 5000);
-  }
-
-  _notify(err) {
-    console.error(`[${CARD_TAG}]`, err);
-    this.dispatchEvent(new CustomEvent("hass-notification", { detail: { message: err?.message || String(err) }, bubbles: true, composed: true }));
-  }
-
-  /* ================================================================ departures */
-
-  _readField(obj, field, conf) {
-    const map = { ...(this._config.departure_fields || {}), ...(conf.fields || {}) };
-    if (map[field]) return getPath(obj, map[field]);
-    return firstDefined(obj, FIELD_CANDIDATES[field]);
-  }
-
-  _collectDepartures() {
-    const now = Date.now();
-    const out = [];
-    const errors = [];
-    const seen = new Set();
-    let updated = 0;
-    this._depConf.forEach((conf, idx) => {
-      const s = this._hass.states[conf.entity];
-      if (!s) return void errors.push(conf.entity);
-      if (s.last_updated) updated = Math.max(updated, Date.parse(s.last_updated) || 0);
-      const group = conf.name || s.attributes.friendly_name || conf.entity;
-      const attrName = conf.attribute || this._config.departures_attribute;
-      let list = attrName ? getPath(s.attributes, attrName) : undefined;
-      if (!attrName) {
-        const key = DEPARTURE_LIST_KEYS.find((k) => Array.isArray(s.attributes[k]));
-        list = key ? s.attributes[key] : Object.values(s.attributes).find((v) => Array.isArray(v) && v.length && typeof v[0] === "object");
-      }
-      const single = !Array.isArray(list);
-      const entries = single ? [{ __state: s.state }] : list;
-      for (const raw of entries) {
-        if (!raw || typeof raw !== "object") continue;
-        const d = this._normalize(raw, s.attributes, conf, now, single);
-        if (!d) continue;
-        const key = `${d.line}|${d.destination}|${Math.round(d.ts / 60000)}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        d.group = group;
-        d.groupIdx = idx;
-        out.push(d);
-      }
-    });
-
-    const lineFilter = (this._config.line_filter || []).map((l) => String(l).toLowerCase());
-    const destExclude = (this._config.destination_exclude || []).map((l) => String(l).toLowerCase());
-    const minMin = +this._config.hide_below_minutes || 0;
-    const list = out
-      .filter((d) => d.ts >= now - 30000)
-      .filter((d) => minMin <= 0 || (d.ts - now) / 60000 >= minMin)
-      .filter((d) => !lineFilter.length || lineFilter.includes(d.line.toLowerCase()))
-      .filter((d) => !destExclude.some((x) => d.destination.toLowerCase().includes(x)))
-      .sort((a, b) => (this._config.group_departures ? a.groupIdx - b.groupIdx : 0) || a.ts - b.ts);
-    return { list, errors, now, updated };
-  }
-
-  /** Reads a field from the departure entry first, then from the sensor attributes. */
-  _normalize(raw, attrs, conf, now, single) {
-    const read = (f) => this._readField(raw, f, conf) ?? this._readField(attrs, f, conf);
-    let line = read("line");
-    if (line && typeof line === "object") line = line.name || line.label || line.number || line.symbol || "";
-    const destination = read("destination");
-    if (single && line == null && destination == null) return null; // e.g. pure delay / helper sensors
-    const delay = parseDelay(this._readField(raw, "delay", conf) ?? (single ? attrs.delay : undefined));
-    let ts = parseTime(this._readField(raw, "time", conf), now);
-    if (ts == null) {
-      const m = this._readField(raw, "minutes", conf);
-      if (m != null && m !== "" && !Number.isNaN(+m)) ts = now + +m * 60000;
-    }
-    if (ts == null && raw.__state != null) ts = parseTime(raw.__state, now);
-    if (ts == null) return null;
-    if ((this._config.add_delay || conf.add_delay) && delay) ts += delay * 60000;
-    const planned = parseTime(this._readField(raw, "planned", conf), now);
-    const cancelled = this._readField(raw, "cancelled", conf);
-    const alerts = this._readField(raw, "alerts", conf);
-    const line_ = String(line ?? "").trim() || "•";
-    const dest_ = String(destination ?? "").trim();
-    return {
-      line: line_,
-      destination: dest_,
-      dir: `${line_}|${String(attrs.direction || dest_)}`,
-      ts,
-      planned,
-      delay: delay ?? 0,
-      realtime: delay != null || raw.estimated != null,
-      platform: this._readField(raw, "platform", conf),
-      cancelled: cancelled === true || cancelled === "true" || cancelled === 1,
-      alerts: Array.isArray(alerts) ? alerts.length > 0 : !!alerts,
-      alertText: Array.isArray(alerts) ? alerts.map((a) => (typeof a === "string" ? a : a?.header || a?.text || a?.title || "")).filter(Boolean).join(" · ") : typeof alerts === "string" ? alerts : "",
-      color: read("color"),
-      transport: String(read("transport") || "").toUpperCase(),
-    };
-  }
-
-  _lineColor(d) {
-    const colors = this._config.line_colors || {};
-    if (colors[d.line]) return colors[d.line];
-    if (d.color) return String(d.color).match(/^[0-9a-f]{6}$/i) ? `#${d.color}` : d.color;
-    if (this._config.departure_style === "berlin" || this._config.line_colors_preset === "berlin") {
-      if (BERLIN_COLORS[d.line]) return BERLIN_COLORS[d.line];
-      if (TRANSPORT_COLORS[d.transport]) return TRANSPORT_COLORS[d.transport];
-    }
-    return LINE_PALETTE[hashString(d.line) % LINE_PALETTE.length];
-  }
-
-  _badge(d) {
-    const bg = this._lineColor(d);
-    return `<div class="badge" style="background:${esc(bg)};color:${badgeTextColor(bg)}">${esc(d.line)}</div>`;
-  }
-
-  _whenHtml(d, now) {
-    const mins = Math.max(0, Math.floor((d.ts - now) / 60000));
-    if (mins < 1) return `<div class="m soon">${this._t("now")}</div>`;
-    if (mins < 60) return `<div class="m${mins <= 2 ? " soon" : ""}">${mins}<small>${this._t("min")}</small></div>`;
-    return `<div class="m">${esc(this._fmtTime(d.ts))}</div>`;
-  }
-
-  _rowsHtml(list, now, detailed) {
-    const c = this._config;
-    let html = "";
-    let lastGroup = null;
-    for (const d of list) {
-      if (c.group_departures && d.groupIdx !== lastGroup) {
-        lastGroup = d.groupIdx;
-        html += `<div class="group-h">${esc(d.group)}</div>`;
-      }
-      const sub = [];
-      if (d.cancelled) sub.push(`<span class="x">${this._t("cancelled")}</span>`);
-      else {
-        const rt = d.realtime && c.show_realtime !== false ? `<span class="rt" title="${this._t("realtime")}"></span>` : "";
-        if (detailed && d.planned && Math.abs(d.planned - d.ts) >= 60000) sub.push(`${rt}<s>${esc(this._fmtTime(d.planned))}</s> ${esc(this._fmtTime(d.ts))}`);
-        else sub.push(`${rt}${esc(this._fmtTime(d.ts))}`);
-        if (d.delay >= 1) sub.push(`<span class="late">+${Math.round(d.delay)}</span>`);
-        else if (c.show_on_time && d.realtime) sub.push(`<span class="ontime">${this._t("on_time")}</span>`);
-      }
-      if (d.platform != null && d.platform !== "") sub.push(`${this._t("platform")} ${esc(d.platform)}`);
-      if (d.alerts) sub.push(`<span class="al">⚠${detailed ? ` ${esc(d.alertText || this._t("disruption"))}` : ""}</span>`);
-      html += `<div class="row${d.cancelled ? " cancelled" : ""}">
-        ${this._badge(d)}
-        <div style="min-width:0"><div class="dest">${esc(d.destination || "—")}</div><div class="sub">${sub.join(" · ")}</div></div>
-        <div class="when">${this._whenHtml(d, now)}</div>
-      </div>`;
-    }
-    return `<div class="rows">${html}</div>`;
-  }
-
-  /** Walking advice for a departure. */
-  _advice(d, now) {
-    const walk = Math.max(0, +this._config.walk_minutes || 0);
-    const minsF = Math.max(0, (d.ts - now) / 60000);
-    if (walk <= 0) return `<span class="w">${minsF < 1 ? this._t("now") : `${Math.floor(minsF)} ${this._t("min")}`}</span>`;
-    const leave = Math.floor(minsF - walk);
-    if (minsF < walk) return `<span class="w late">${this._t("too_late")}</span>`;
-    if (leave <= 1) return `<span class="w go">${this._t("leave_now")}</span>`;
-    return `<span class="w wait">${this._t("leave_in", leave)}</span>`;
-  }
-
-  _trackHtml(d, now) {
-    const window = Math.max(5, +this._config.approach_window || 15);
-    const walk = Math.max(0, +this._config.walk_minutes || 0);
-    const minsF = Math.max(0, (d.ts - now) / 60000);
-    const pos = Math.max(0, Math.min(1, 1 - minsF / window)) * 100;
-    const ticks = [];
-    for (let m = 5; m < window; m += 5) ticks.push(`<i class="tick" style="left:${(1 - m / window) * 100}%"></i>`);
-    const walkMark = walk > 0 && walk < window ? `<i class="walk" style="left:${(1 - walk / window) * 100}%"></i>` : "";
-    return `<div class="track"><i class="rail"></i>${ticks.join("")}${walkMark}<i class="tr${minsF < 1 ? " arr" : ""}" style="left:${pos}%;background:${esc(
-      this._lineColor(d)
-    )}"></i><span class="st">U</span></div>`;
-  }
-
-  _depTitle() {
-    const c = this._config;
-    return c.station_name || c.title_departures || this._t("departures");
-  }
-
-  _ovDep() {
-    const body = this._$("ov-dep");
-    this._$("ovd-title").textContent = this._depTitle();
-    const adv = this._$("ov-adv");
-    if (!this._depConf.length) {
-      adv.hidden = true;
-      return void (body.innerHTML = `<div class="msg">${this._t("not_configured")}</div>`);
-    }
-    const { list, errors, now } = this._collectDepartures();
-    const err = errors.map((e) => `<div class="msg error">${this._t("not_found")}: ${esc(e)}</div>`).join("");
-    if (!list.length) {
-      adv.hidden = true;
-      return void (body.innerHTML = err + `<div class="msg">${this._t("no_departures")}</div>`);
-    }
-    body.innerHTML = err + this._rowsHtml(list.slice(0, Math.max(1, +this._config.max_departures || 7)), now, false);
-    const next = list.find((d) => !d.cancelled && (d.ts - now) / 60000 >= (+this._config.walk_minutes || 0));
-    if (this._config.show_approach && next && +this._config.walk_minutes > 0) {
-      adv.hidden = false;
-      adv.innerHTML = `${this._badge(next)}<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">→ ${esc(next.destination)}</span>${this._advice(next, now)}`;
-    } else adv.hidden = true;
-  }
-
-  _bindTransit() {
-    this._$("tr-filter").addEventListener("click", (ev) => {
-      const chip = ev.target.closest("[data-dir]");
-      if (!chip) return;
-      const k = chip.dataset.dir;
-      if (k === "*") this._trHidden.clear();
-      else if (this._trHidden.has(k)) this._trHidden.delete(k);
-      else this._trHidden.add(k);
-      lsSet("idc_tr_hidden", [...this._trHidden]);
-      this._trRender();
-    });
-  }
-
-  _trRender() {
-    const c = this._config;
-    const board = this._$("tr-board");
-    const dirsEl = this._$("tr-dirs");
-    const filter = this._$("tr-filter");
-    this._$("trd-title").textContent = this._depTitle();
-    if (!this._depConf.length) {
-      board.innerHTML = `<div class="msg">${this._t("not_configured")}</div>`;
-      dirsEl.innerHTML = filter.innerHTML = "";
-      return;
-    }
-    const { list, errors, now, updated } = this._collectDepartures();
-    const err = errors.map((e) => `<div class="msg error">${this._t("not_found")}: ${esc(e)}</div>`).join("");
-
-    // directions (line + direction)
-    const dirs = new Map();
-    for (const d of list) {
-      if (!dirs.has(d.dir)) dirs.set(d.dir, { key: d.dir, first: d, deps: [] });
-      dirs.get(d.dir).deps.push(d);
-    }
-    const dirList = [...dirs.values()];
-    filter.innerHTML =
-      dirList.length > 1
-        ? `<button class="chip${this._trHidden.size ? "" : " sel"}" data-dir="*">${this._t("all")}</button>` +
-          dirList
-            .map(
-              (g) =>
-                `<button class="chip${this._trHidden.has(g.key) ? " off" : " sel"}" data-dir="${esc(g.key)}">${this._badge(g.first)}${esc(
-                  g.key.split("|")[1] || g.first.destination
-                )}</button>`
-            )
-            .join("")
-        : "";
-    filter.hidden = dirList.length < 2;
-
-    const visible = list.filter((d) => !this._trHidden.has(d.dir));
-    board.innerHTML = err + (visible.length ? this._rowsHtml(visible.slice(0, Math.max(1, +c.max_departures_detail || 14)), now, true) : `<div class="msg">${this._t("no_departures")}</div>`);
-    this._$("tr-foot").textContent = updated ? this._t("updated", this._fmt(updated, { hour: "2-digit", minute: "2-digit", second: "2-digit" })) : "";
-
-    dirsEl.innerHTML = dirList
-      .filter((g) => !this._trHidden.has(g.key))
-      .map((g) => {
-        const running = g.deps.filter((d) => !d.cancelled);
-        const next = running[0] || g.first;
-        const others = g.deps.slice(next === g.deps[0] ? 1 : 0, 6).filter((d) => d !== next);
-        const m = (d) => Math.max(0, Math.floor((d.ts - now) / 60000));
-        const nextTxt = m(next) < 1 ? this._t("now") : m(next) < 60 ? `${m(next)}<small>${this._t("min")}</small>` : esc(this._fmtTime(next.ts));
-        return `<div class="dir">
-          <div class="dir-h">${this._badge(next)}<span class="d">→ ${esc(g.key.split("|")[1] || next.destination)}</span>${
-            next.platform != null && next.platform !== "" ? `<span class="pl">${this._t("platform")} ${esc(next.platform)}</span>` : ""
-          }</div>
-          <div class="dir-next"><span class="f">${nextTxt}</span>${others
-            .map((d) => `<span class="o${d.cancelled ? " x" : d.delay >= 1 ? " late" : ""}">${m(d) < 60 ? `${m(d)}<small>${this._t("min")}</small>` : esc(this._fmtTime(d.ts))}</span>`)
-            .join("")}</div>
-          ${c.show_approach ? this._trackHtml(next, now) : ""}
-          <div class="adv">${this._advice(next, now)}${next.delay >= 1 ? ` · <span style="color:var(--idc-warn)">+${Math.round(next.delay)} ${this._t("min")}</span>` : ""}</div>
-        </div>`;
-      })
-      .join("");
-  }
-
-  /* ================================================================ clock: alarms, timers, stopwatch */
-
-  _bindClock() {
-    // alarms
-    this._$("al-add").addEventListener("click", () => this._openAlarm());
-    this._$("cl-alarms").addEventListener("click", (ev) => {
-      const sw = ev.target.closest("[data-toggle]");
-      if (sw) {
-        const a = this._data.alarms.find((x) => x.id === sw.dataset.toggle);
-        if (a) {
-          a.enabled = !a.enabled;
-          this._saveUserData();
-          this._clRender();
-        }
-        return;
-      }
-      const row = ev.target.closest("[data-alarm]");
-      if (row) this._openAlarm(row.dataset.alarm);
-    });
-    this._$("al-days").addEventListener("click", (ev) => {
-      const b = ev.target.closest("[data-day]");
-      if (b) b.classList.toggle("sel");
-    });
-    this._$("al-overlay").addEventListener("click", (ev) => ev.target.id === "al-overlay" && this._closeAlarm());
-    this._$("al-cancel").addEventListener("click", () => this._closeAlarm());
-    this._$("al-sheet").addEventListener("submit", (ev) => {
-      ev.preventDefault();
-      const time = this._$("al-time").value;
-      if (!/^\d{2}:\d{2}/.test(time)) return;
-      const days = [...this._$("al-days").querySelectorAll(".sel")].map((b) => +b.dataset.day);
-      const label = this._$("al-label").value.trim();
-      const alarms = this._data.alarms || (this._data.alarms = []);
-      const existing = alarms.find((a) => a.id === this._editAlarm);
-      if (existing) Object.assign(existing, { time: time.slice(0, 5), days, label, enabled: true });
-      else alarms.push({ id: uid(), time: time.slice(0, 5), days, label, enabled: true });
-      alarms.sort((a, b) => a.time.localeCompare(b.time));
-      this._saveUserData();
-      this._closeAlarm();
-      this._clRender();
-    });
-    this._$("al-del").addEventListener("click", () => {
-      this._data.alarms = (this._data.alarms || []).filter((a) => a.id !== this._editAlarm);
-      this._saveUserData();
-      this._closeAlarm();
-      this._clRender();
-    });
-
-    // timers
-    const presets = Array.isArray(this._config.timer_presets) ? this._config.timer_presets : DEFAULTS.timer_presets;
-    this._$("tm-presets").innerHTML = presets.map((m) => `<button class="chip" data-min="${+m}">${+m} ${this._t("min")}</button>`).join("");
-    this._$("tm-presets").addEventListener("click", (ev) => {
-      const b = ev.target.closest("[data-min]");
-      if (b) this._startTimer(+b.dataset.min);
-    });
-    this._$("tm-form").addEventListener("submit", (ev) => {
-      ev.preventDefault();
-      const v = parseFloat(String(this._$("tm-min").value).replace(",", "."));
-      if (v > 0) this._startTimer(v);
-      this._$("tm-min").value = "";
-      this._$("tm-min").blur();
-    });
-    this._$("cl-timers").addEventListener("click", (ev) => {
-      const b = ev.target.closest("[data-tact]");
-      if (!b) return;
-      const t = this._timers.find((x) => x.id === b.dataset.tid);
-      if (!t) return;
-      if (b.dataset.tact === "plus") {
-        t.end += 60000;
-        t.duration += 60000;
-      } else this._timers = this._timers.filter((x) => x !== t);
-      lsSet("idc_timers", this._timers);
-      this._clRender();
-    });
-
-    // stopwatch
-    this._$("sw-b1").addEventListener("click", () => {
-      // left: lap (running) / reset (stopped)
-      if (this._sw.start) this._sw.laps.unshift(this._swElapsed());
-      else this._sw = { start: null, acc: 0, laps: [] };
-      this._saveSw();
-    });
-    this._$("sw-b2").addEventListener("click", () => {
-      if (this._sw.start) {
-        this._sw.acc = this._swElapsed();
-        this._sw.start = null;
-      } else this._sw.start = Date.now();
-      this._saveSw();
-    });
-
-    // ringing
-    this._$("ring-stop").addEventListener("click", () => this._stopRing());
-    this._$("ring-snooze").addEventListener("click", () => {
-      const r = this._ringing;
-      this._stopRing();
-      if (r?.type === "alarm") {
-        this._snoozes.push({ until: Date.now() + (+this._config.snooze_minutes || 9) * 60000, label: r.label, time: r.time });
-      }
-    });
-  }
-
-  _openAlarm(id) {
-    const a = (this._data.alarms || []).find((x) => x.id === id);
-    this._editAlarm = a?.id || null;
-    const d = new Date(Date.now() + 3600000);
-    this._$("al-time").value = a?.time || `${pad2(d.getHours())}:00`;
-    this._$("al-label").value = a?.label || "";
-    for (const b of this._$("al-days").children) b.classList.toggle("sel", !!a?.days?.includes(+b.dataset.day));
-    this._$("al-del").hidden = !a;
-    this._$("al-overlay").hidden = false;
-  }
-
-  _closeAlarm() {
-    this._$("al-overlay").hidden = true;
-    this._editAlarm = null;
-    this.shadowRoot.activeElement?.blur?.();
-  }
-
-  _repeatText(days) {
-    const d = [...(days || [])].sort();
-    if (!d.length) return this._t("once");
-    if (d.length === 7) return this._t("daily_rep");
-    if (d.join() === "1,2,3,4,5") return this._t("weekdays");
-    if (d.join() === "6,7") return this._t("weekend");
-    return d.map((x) => this._t("days_short")[x - 1]).join(", ");
-  }
-
-  /** Next occurrence of an alarm (local time). */
-  _alarmNext(a, from = Date.now()) {
-    const [h, m] = a.time.split(":").map(Number);
-    for (let i = 0; i < 8; i++) {
-      const d = new Date(from);
-      d.setDate(d.getDate() + i);
-      d.setHours(h, m, 0, 0);
-      if (d.getTime() <= from) continue;
-      const wd = d.getDay() || 7;
-      if (!a.days?.length || a.days.includes(wd)) return d.getTime();
-    }
-    return null;
-  }
-
-  _nextAlarm() {
-    let best = null;
-    for (const a of this._data.alarms || []) {
-      if (!a.enabled) continue;
-      const ts = this._alarmNext(a);
-      if (ts && (!best || ts < best.ts)) best = { ts, alarm: a };
-    }
-    for (const s of this._snoozes) if (!best || s.until < best.ts) best = { ts: s.until, alarm: { label: s.label } };
-    return best;
-  }
-
-  _checkAlarms(now) {
-    const d = new Date(now);
-    const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-    const wd = d.getDay() || 7;
-    const key = `${d.toDateString()} ${hm}`;
-    for (const a of this._data.alarms || []) {
-      if (!a.enabled || a.time !== hm || this._fired[a.id] === key) continue;
-      if (a.days?.length && !a.days.includes(wd)) continue;
-      this._fired[a.id] = key;
-      if (!a.days?.length) {
-        a.enabled = false;
-        this._saveUserData();
-      }
-      this._ring({ type: "alarm", label: a.label || this._t("alarm_ringing"), time: a.time });
-    }
-    const due = this._snoozes.filter((s) => s.until <= now + 500);
-    if (due.length) {
-      this._snoozes = this._snoozes.filter((s) => !due.includes(s));
-      this._ring({ type: "alarm", label: due[0].label || this._t("alarm_ringing"), time: due[0].time });
-    }
-  }
-
-  _startTimer(minutes) {
-    const ms = Math.round(minutes * 60000);
-    this._timers.push({ id: uid(), end: Date.now() + ms, duration: ms, label: `${minutes.toLocaleString(this._lang)} ${this._t("min")}` });
-    lsSet("idc_timers", this._timers);
-    this._clRender();
-  }
-
-  _checkTimers(now) {
-    const due = this._timers.filter((t) => t.end <= now);
-    if (!due.length) return;
-    this._timers = this._timers.filter((t) => t.end > now);
-    lsSet("idc_timers", this._timers);
-    // don't ring for timers that ended long ago (e.g. dashboard was closed)
-    const fresh = due.filter((t) => now - t.end < 5 * 60000);
-    if (fresh.length) this._ring({ type: "timer", label: fresh[0].label, time: null });
-    if (this._view === "clock") this._clRender();
-  }
-
-  _swElapsed() {
-    return this._sw.acc + (this._sw.start ? Date.now() - this._sw.start : 0);
-  }
-
-  _saveSw() {
-    lsSet("idc_stopwatch", this._sw);
-    this._clRender();
-    this._syncStopwatchTimer();
-  }
-
-  _syncStopwatchTimer() {
-    const want = this._view === "clock" && !!this._sw.start;
-    if (want && !this._swTimer) this._swTimer = setInterval(() => this._swTick(), 50);
-    if (!want && this._swTimer) {
-      clearInterval(this._swTimer);
-      this._swTimer = null;
-    }
-  }
-
-  _swTick() {
-    const el = this._$("sw-time");
-    if (!el) return;
-    const s = fmtDuration(this._swElapsed(), true);
-    const i = s.lastIndexOf(",");
-    el.innerHTML = `${s.slice(0, i)}<small>${s.slice(i)}</small>`;
-  }
-
-  _clRender() {
-    if (!this._built || this._view !== "clock") return;
-    const alarms = this._data.alarms || [];
-    this._$("cl-alarms").innerHTML = alarms.length
-      ? alarms
-          .map(
-            (a) => `<div class="alarm${a.enabled ? "" : " off"}" data-alarm="${esc(a.id)}">
-              <span class="t">${esc(a.time)}</span>
-              <div class="i"><div>${esc(a.label || this._t("alarm_ringing"))}</div><div>${esc(this._repeatText(a.days))}</div></div>
-              <button class="sw${a.enabled ? " on" : ""}" data-toggle="${esc(a.id)}" aria-label="on/off"></button>
-            </div>`
-          )
-          .join("") + `<div class="msg" style="font-size:12.5px">${esc(this._t("alarm_note"))}</div>`
-      : `<div class="msg">${this._t("no_alarms")}</div><div class="msg" style="font-size:12.5px">${esc(this._t("alarm_note"))}</div>`;
-
-    const sw = this._sw;
-    this._$("sw-b1").textContent = sw.start ? this._t("lap") : this._t("reset");
-    this._$("sw-b1").disabled = !sw.start && !sw.acc;
-    this._$("sw-b2").textContent = sw.start ? this._t("stop") : sw.acc ? this._t("resume") : this._t("start");
-    this._$("sw-b2").className = `btn ${sw.start ? "danger" : "good"}`;
-    const laps = sw.laps || [];
-    this._$("sw-laps").innerHTML = laps
-      .map((t, i) => {
-        const prev = laps[i + 1] || 0;
-        return `<div class="lap"><span>${this._t("lap")} ${laps.length - i}</span><b>${fmtDuration(t - prev, true)}</b><span>${fmtDuration(t, true)}</span></div>`;
-      })
-      .join("");
-    this._swTick();
-    this._clTick(true);
-  }
-
-  _clTick() {
-    const now = Date.now();
-    this._$("cl-time").innerHTML = `${esc(this._fmtTime(now))}<span class="sec">${pad2(new Date(now).getSeconds())}</span>`;
-    const next = this._nextAlarm();
-    let meta = `<span><b>${esc(this._fmt(now, { weekday: "long", day: "numeric", month: "long" }))}</b></span>`;
-    if (next) {
-      const diff = Math.max(0, next.ts - now);
-      meta += `<span>${this._t("next_alarm")}: <b>${esc(this._alarmWhen(next.ts))}</b> · ${esc(
-        this._t("in_time", Math.floor(diff / 3600000), Math.floor((diff % 3600000) / 60000))
-      )}</span>`;
-    }
-    this._$("cl-meta").innerHTML = meta;
-    // update running timers in place so buttons stay tappable
-    const tEl = this._$("cl-timers");
-    const sig = this._timers.map((t) => `${t.id}:${t.duration}`).join();
-    if (tEl.dataset.sig === sig && this._timers.length) {
-      for (const t of this._timers) {
-        const row = tEl.querySelector(`[data-timer="${t.id}"]`);
-        if (!row) continue;
-        const left = Math.max(0, t.end - now);
-        row.querySelector(".t").textContent = fmtDuration(left);
-        row.querySelector(".prog i").style.width = `${(left / t.duration) * 100}%`;
-      }
-      return;
-    }
-    tEl.dataset.sig = sig;
-    tEl.innerHTML = this._timers.length
-      ? this._timers
-          .map((t) => {
-            const left = Math.max(0, t.end - now);
-            return `<div class="timer" data-timer="${t.id}"><div class="row1"><span class="t">${fmtDuration(left)}</span>
-              <button class="btn" data-tact="plus" data-tid="${t.id}">+1 ${this._t("min")}</button>
-              <button class="btn round danger" data-tact="del" data-tid="${t.id}"><ha-icon icon="mdi:close"></ha-icon></button></div>
-              <div class="sub" style="margin-top:4px">${esc(t.label || "")}</div>
-              <div class="prog"><i style="width:${(left / t.duration) * 100}%"></i></div></div>`;
-          })
-          .join("")
-      : `<div class="msg">${this._t("no_timers")}</div>`;
-  }
-
-  /* ringing */
-
-  _unlockAudio() {
-    try {
-      if (!this._audio) {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (AC) this._audio = new AC();
-      }
-      if (this._audio?.state === "suspended") this._audio.resume();
-    } catch (e) {
-      /* no audio */
-    }
-  }
-
-  _beep() {
-    const ctx = this._audio;
-    if (!ctx) return;
-    if (ctx.state === "suspended") ctx.resume();
-    const t0 = ctx.currentTime + 0.02;
-    for (let i = 0; i < 3; i++) {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      const t = t0 + i * 0.26;
-      o.type = "sine";
-      o.frequency.value = i === 2 ? 1046.5 : 880;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
-      o.connect(g).connect(ctx.destination);
-      o.start(t);
-      o.stop(t + 0.25);
-    }
-  }
-
-  _ring(r) {
-    this._stopRing(true);
-    this._ringing = r;
-    this._$("ring-icon").setAttribute("icon", r.type === "timer" ? "mdi:timer-sand-complete" : "mdi:alarm");
-    this._$("ring-time").textContent = r.type === "timer" ? this._t("timer_done") : this._fmtTime(Date.now());
-    this._$("ring-time").style.fontSize = r.type === "timer" ? "54px" : "";
-    this._$("ring-label").textContent = r.label || "";
-    this._$("ring-snooze").hidden = r.type !== "alarm";
-    this._$("ring-snooze").textContent = this._t("snooze", +this._config.snooze_minutes || 9);
-    this._$("ring").hidden = false;
-    this._beep();
-    this._ringTimer = setInterval(() => this._beep(), 1400);
-    this._ringStop = setTimeout(() => this._stopRing(), (+this._config.alarm_ring_minutes || 5) * 60000);
-    if (this._config.alarm_script) {
-      this._hass
-        .callService("script", "turn_on", { variables: { type: r.type, label: r.label || "", time: r.time || "" } }, { entity_id: this._config.alarm_script })
-        .catch((e) => console.warn(`[${CARD_TAG}] alarm_script failed`, e));
-    }
-    this._tbClock();
-  }
-
-  _stopRing(silent) {
-    clearInterval(this._ringTimer);
-    clearTimeout(this._ringStop);
-    this._ringTimer = null;
-    this._ringing = null;
-    const el = this._$("ring");
-    if (el) el.hidden = true;
-    if (!silent) {
-      this._lastInteraction = Date.now();
-      if (this._view === "clock") this._clRender();
-    }
-  }
-}
-
-/* ---------------------------------------------------------------- editor */
-
-const EDITOR_LABELS = {
-  weather_entity: "Wetter-Entität",
-  weather_location: "Ortsname (Wetter)",
-  todo_entity: "Einkaufsliste (To-do-Entität, z. B. Bring!)",
-  todo_entities: "Weitere Bring!-Listen (umschaltbar)",
-  departure_entities: "Abfahrts-Sensoren",
-  departure_style: "Stil der Abfahrtstafel",
-  station_name: "Name der Station",
-  title_todo: "Titel Einkaufsliste",
-  max_departures: "Abfahrten in der Übersicht",
-  max_departures_detail: "Abfahrten im Tab Verkehr",
-  walk_minutes: "Fußweg zur Station (Min.)",
-  forecast_hours: "Stunden in der Übersicht",
-  forecast_days: "Tage im Tab Wetter",
-  show_completed: "„Zuletzt gekauft“ (Anzahl)",
-  default_tab: "Start-Tab",
-  return_to_overview: "Zurück zur Übersicht nach (Sek., 0 = nie)",
-  alarm_script: "Skript beim Wecker/Timer (optional)",
-  snooze_minutes: "Schlummern (Min.)",
-  show_seconds: "Sekunden anzeigen",
-  show_approach: "Anfahrt-Anzeige",
-  weather_gradient: "Wetter mit Farbverlauf",
-  add_delay: "Verspätung zur Abfahrtszeit addieren",
-  height: "Kartenhöhe (CSS)",
-  floorplan: "Grundriss",
-  image: "Bild-URL (z. B. /local/grundriss.png)",
-  title: "Titel",
-  invert: "Helles Bild invertieren",
-};
-
-class IpadDashboardCardEditor extends HTMLElement {
-  setConfig(config) {
-    this._config = config;
-    this._render();
-  }
-  set hass(hass) {
-    this._hass = hass;
-    if (this._form) this._form.hass = hass;
-    else this._render();
-  }
-  _schema() {
-    const deps = this._config?.departure_entities;
-    const simpleDeps = !deps || (Array.isArray(deps) && deps.every((d) => typeof d === "string"));
-    const tabOptions = [...TABS.map((t) => ({ value: t.id, label: STRINGS.de[`tab_${t.id}`] })), { value: "clock", label: STRINGS.de.tab_clock }];
-    return [
-      { name: "weather_entity", selector: { entity: { filter: { domain: "weather" } } } },
-      { name: "todo_entity", selector: { entity: { filter: { domain: "todo" } } } },
-      { name: "todo_entities", selector: { entity: { multiple: true, filter: { domain: "todo" } } } },
-      ...(simpleDeps ? [{ name: "departure_entities", selector: { entity: { multiple: true, filter: { domain: "sensor" } } } }] : []),
-      {
-        type: "grid",
-        name: "",
-        schema: [
-          { name: "default_tab", selector: { select: { mode: "dropdown", options: tabOptions } } },
-          { name: "return_to_overview", selector: { number: { min: 0, max: 3600, step: 10, mode: "box" } } },
-          {
-            name: "departure_style",
-            selector: { select: { mode: "dropdown", options: [{ value: "calm", label: "Ruhig" }, { value: "berlin", label: "Berlin (Zugzielanzeiger)" }] } },
-          },
-          { name: "station_name", selector: { text: {} } },
-          { name: "walk_minutes", selector: { number: { min: 0, max: 30, mode: "box" } } },
-          { name: "max_departures", selector: { number: { min: 1, max: 20, mode: "box" } } },
-          { name: "max_departures_detail", selector: { number: { min: 1, max: 30, mode: "box" } } },
-          { name: "weather_location", selector: { text: {} } },
-          { name: "forecast_hours", selector: { number: { min: 0, max: 8, mode: "box" } } },
-          { name: "forecast_days", selector: { number: { min: 1, max: 15, mode: "box" } } },
-          { name: "title_todo", selector: { text: {} } },
-          { name: "show_completed", selector: { number: { min: 0, max: 60, mode: "box" } } },
-          { name: "snooze_minutes", selector: { number: { min: 1, max: 30, mode: "box" } } },
-          { name: "height", selector: { text: {} } },
-          { name: "show_approach", selector: { boolean: {} } },
-          { name: "weather_gradient", selector: { boolean: {} } },
-          { name: "show_seconds", selector: { boolean: {} } },
-          { name: "add_delay", selector: { boolean: {} } },
-        ],
-      },
-      { name: "alarm_script", selector: { entity: { filter: { domain: "script" } } } },
-      {
-        type: "expandable",
-        name: "floorplan",
-        title: "Grundriss",
-        schema: [
-          { name: "image", selector: { text: {} } },
-          { name: "title", selector: { text: {} } },
-          { name: "invert", selector: { boolean: {} } },
-        ],
-      },
-    ];
-  }
-  _render() {
-    if (!this._config || !this._hass) return;
-    if (!this._form) {
-      this._form = document.createElement("ha-form");
-      this._form.computeLabel = (s) => EDITOR_LABELS[s.name] || s.name;
-      this._form.addEventListener("value-changed", (ev) => {
-        ev.stopPropagation();
-        const config = { ...ev.detail.value };
-        for (const [k, v] of Object.entries(config)) {
-          if (v === "" || v === undefined || (Array.isArray(v) && !v.length && k === "todo_entities")) delete config[k];
-          else if (k in DEFAULTS && JSON.stringify(v) === JSON.stringify(DEFAULTS[k]) && !(k in (this._config || {}))) delete config[k];
-        }
-        this._config = config;
-        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
-      });
-      this.appendChild(this._form);
-      const ver = document.createElement("div");
-      ver.style.cssText = "margin-top:12px;font-size:12px;opacity:.6";
-      ver.textContent = `iPad Dashboard Card v${CARD_VERSION} · Räume, Tabs, Layout und Linienfarben im YAML-Editor`;
-      this.appendChild(ver);
-    }
-    this._form.hass = this._hass;
-    this._form.data = { ...DEFAULTS, ...this._config };
-    this._form.schema = this._schema();
-  }
-}
-
-/* ---------------------------------------------------------- registration */
-
-if (!customElements.get(CARD_TAG)) customElements.define(CARD_TAG, IpadDashboardCard);
-if (!customElements.get(EDITOR_TAG)) customElements.define(EDITOR_TAG, IpadDashboardCardEditor);
-
-window.customCards = window.customCards || [];
-if (!window.customCards.some((c) => c.type === CARD_TAG)) {
-  window.customCards.push({
-    type: CARD_TAG,
-    name: "iPad Dashboard Card",
-    description: "Tabs für Übersicht, Wetter, Verkehr, Einkaufen (Bring!), Zuhause und Uhr mit Wecker, Timer und Stoppuhr – für das iPad im Querformat.",
-    preview: false,
-    documentationURL: "https://github.com/flxxxlf/homeassist-ipad-dashboard-card",
-  });
-}
-
-console.info(
-  `%c IPAD-DASHBOARD-CARD %c v${CARD_VERSION} `,
-  "background:#7fa6c9;color:#0e1115;font-weight:700;border-radius:3px 0 0 3px",
-  "background:#151a20;color:#e4e7eb;border-radius:0 3px 3px 0"
-);
+@noble/ciphers/utils.js:
+  (*! noble-ciphers - MIT License (c) 2023 Paul Miller (paulmillr.com) *)
+*/

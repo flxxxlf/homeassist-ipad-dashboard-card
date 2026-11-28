@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.0
+
+- Neuer Tab **Musik**: Übersicht aller Räume (`music_rooms`) mit Cover, Titel, Künstler und App. Räume ohne Wiedergabe erscheinen dezent als „Pausiert“ oder „Aus“.
+- Große Ansicht mit Cover, Titel, Künstler, Album, Fortschritt (antippen zum Spulen) und Steuerung: Play/Pause, Zurück, Weiter, Lautstärke, Stumm, Zufall, Wiederholen, Ein/Aus. Es erscheinen nur Knöpfe, die der Player laut `supported_features` unterstützt.
+- Music-Assistant-Räume: Playlists aus der Music-Assistant-Bibliothek (z. B. Spotify) über `music_assistant.get_library`, abspielen per `music_assistant.play_media`. Bei anderen Playern ausgeblendet.
+- Sendspin: Das iPad kann selbst als Music-Assistant-Player arbeiten (`sendspin_server`, `player_name`). Basis ist die offizielle Bibliothek `@sendspin/sendspin-js` 6.0.0, mit Hinweis „Tippen, um Ton zu aktivieren“, automatischem Neuverbinden und Statusanzeige.
+- Der Quellcode liegt jetzt in `src/`, `dist/` wird mit esbuild gebaut (`npm run build`).
+
 ## v1.2.0
 
 - Tabs oben: Übersicht, Wetter, Verkehr, Einkaufen, Zuhause. Die Uhrzeit rechts öffnet die Uhr. Kacheln in der Übersicht führen zum passenden Tab.
